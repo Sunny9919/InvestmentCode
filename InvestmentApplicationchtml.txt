@@ -1,0 +1,474 @@
+﻿@using Intellect.Unite.WebPackages.Investment.DTO;
+@using Intellect.Unite.WebPackages.Mdm.Model;
+@using Intellect.UniteERP.MyResources.Investments;
+@model InvestmentApllicationDTO
+@using ERPClient
+@using Microsoft.AspNetCore.Http
+@inject IHttpContextAccessor HttpContextAccessor
+@{
+    //ViewBag.Title = "Investment Application";
+    //Layout = "~/Views/Shared/_FormsLayout.cshtml";
+    var isDCTuser = HttpContextAccessor.HttpContext.Session.GetSessionData<bool>("IsDCTUser");
+    if (isDCTuser == true)
+    {
+        Layout = "~/Views/Shared/_DCTDefault.cshtml";
+    }
+    else
+    {
+        Layout = "~/Views/Shared/_FormsLayout.cshtml";
+    }
+}
+
+<div class="modal-header">
+    <h4 class="modal-title">@resInvestmentLables.InvestmentApplication</h4>
+</div>
+<div class="widget-body">
+    @using (Html.BeginForm())
+    {
+        <div class="widget">
+            <div class="widget-body">
+                <div class="row">
+                    <div class="col-sm-2">
+                        @Html.LabelFor(model => Model.TermInvestments.InvestmentID)<span class="required">*</span>
+                        @Html.DropDownListFor(model => Model.TermInvestments.InvestmentID, ViewBag.ListInvest as SelectList, resInvestmentLables.select, new { @class = "form-control input-xs" })
+                        @*@Html.ValidationMessageFor(model => Model.TermInvestments.InvestmentID)*@
+                        @Html.HiddenFor(model => Model.TermInvestments.TypeOfInvestment)
+                    </div>
+
+                   
+                    @*<div class="col-sm-2">
+                @Html.LabelFor(model => Model.TermInvestments.InvestmentLocation)<span class="required">*</span>
+                @Html.TextBoxFor(model => Model.TermInvestments.InvestmentLocation, new { @maxlength = "40", @class = "form-control input-xs" })
+                @Html.ValidationMessageFor(model => Model.TermInvestments.InvestmentLocation)
+            </div>*@
+                    <div class="col-sm-2">
+                        @Html.LabelFor(model => Model.TermInvestments.ReferenceAccountNo)<span class="required">*</span>
+                        @Html.TextBoxFor(model => Model.TermInvestments.ReferenceAccountNo, new { @maxlength = "50", @class = "form-control input-xs" })
+                        @*@Html.HiddenFor(model => Model.TermInvestments.ReferenceAccountNo)*@
+                    </div>
+                    <div class="col-sm-2">
+                        @Html.LabelFor(model => Model.TermInvestments.BoardResolutionNo)
+                        @Html.TextBoxFor(model => Model.TermInvestments.BoardResolutionNo, new { @maxlength = "20", @class = "form-control input-xs alphanumwithspecchar" })
+                       @* @Html.ValidationMessageFor(model => Model.TermInvestments.BoardResolutionNo)*@
+                    </div>
+                    <div class="col-sm-2">
+                        @Html.LabelFor(model => Model.TermInvestments.BoardResolutionDate)
+                        @Html.TextBoxFor(model => Model.TermInvestments.BoardResolutionDate, "{0:yyyy-MM-dd}", new { @class = "form-control input-xs", @type = "date" })
+                       @* @Html.ValidationMessageFor(model => Model.TermInvestments.BoardResolutionDate)*@
+                    </div>
+                    <div class="col-sm-2">
+                        @Html.LabelFor(model => Model.TermInvestments.InvestedDate)<span class="required">*</span>
+                        @Html.TextBoxFor(model => Model.TermInvestments.InvestedDate, "{0:yyyy-MM-dd}", new { @class = "form-control input-xs", @type = "date" })
+                        @Html.HiddenFor(model => Model.TermInvestments.InvestedDate)
+                        <input type="hidden" id="LoginDateHidden" />
+                        @Html.HiddenFor(model => Model.TermInvestments.formID)
+                    </div>
+                </div>
+                <div class="row" id="IsBankControlesVisible">
+                     <div class="col-sm-2">                        
+                        @Html.LabelFor(model => Model.TermInvestments.BankType)
+                        @Html.DropDownListFor(model => Model.TermInvestments.BankType, ViewBag.ListBankType as SelectList, resInvestmentLables.select, new { @class = "form-control input-xs" })
+                        @*@Html.ValidationMessageFor(model => Model.TermInvestments.BankType)*@
+                    </div>
+                    <div class="col-sm-2">
+                        @Html.LabelFor(model => Model.TermInvestments.Bank)
+                        @Html.DropDownListFor(model => Model.TermInvestments.Bank, ViewBag.lstBankMaster as SelectList,resInvestmentLables.select, new { @class = "form-control input-xs" })
+                        @*@Html.ValidationMessageFor(model => Model.TermInvestments.Bank)*@
+                    </div>
+                    <div class="col-sm-2">
+                        @Html.LabelFor(model => Model.TermInvestments.Branch)
+                        @Html.DropDownListFor(model => Model.TermInvestments.Branch, ViewBag.lstBankBranchMaster as SelectList, resInvestmentLables.select, new { @class = "form-control input-xs" })
+                        @*@Html.ValidationMessageFor(model => Model.TermInvestments.Branch)*@
+                    </div>
+                   
+                </div>
+
+                
+
+
+            </div>
+        </div>
+        <div class="widget" id="TermInvestmentDetails">
+            <div class="modal-header">
+                <h4 class="modal-title">@resInvestmentLables.TermInvestmentDetails</h4>
+            </div>
+            <div class="widget-body">
+                <div class="row" >
+                    <div class="col-sm-12" >
+                        <div class="col-sm-2">
+                            @Html.LabelFor(model => Model.TermInvestments.DepositType)<span class="required">*</span>
+                            @Html.DropDownListFor(model => Model.TermInvestments.DepositType, ViewBag.ListDepositType as SelectList, resInvestmentLables.select, new { @class = "form-control input-xs" })
+                            @Html.HiddenFor(model => Model.TermInvestments.DepositType)
+                        </div>
+                        <div class="col-sm-2">
+                            @Html.LabelFor(model => Model.TermInvestments.FrequencyTypeID)<span class="required" id="IsFreqCompulsory">*</span>
+                            @Html.DropDownListFor(model => Model.TermInvestments.FrequencyTypeID, ViewBag.ListFrequencyType as SelectList, resInvestmentLables.select, new { @class = "form-control input-xs" })
+                            @Html.HiddenFor(model => Model.TermInvestments.FrequencyTypeID)
+                        </div>
+                      
+                        <div class="col-sm-2">
+
+                            @Html.LabelFor(model => Model.TermInvestments.InvestedDate)<span class="required">*</span>
+                            @Html.TextBoxFor(model => Model.TermInvestments.InvestedDate, "{0:yyyy-MM-dd}", new { @class = "form-control input-xs", @type = "date" })
+                            @Html.HiddenFor(model => Model.TermInvestments.InvestedDate)
+                            <input type="hidden" id="LoginDateHidden" />
+                            @Html.HiddenFor(model => Model.TermInvestments.formID)
+                        </div>
+                        <div class="col-sm-2">
+
+                            @Html.LabelFor(model => Model.TermInvestments.InvestedDate)<span class="required">*</span>
+                            @Html.TextBoxFor(model => Model.TermInvestments.InvestedDate, "{0:yyyy-MM-dd}", new { @class = "form-control input-xs", @type = "date" })
+                            @Html.HiddenFor(model => Model.TermInvestments.InvestedDate)
+                            <input type="hidden" id="LoginDateHidden" />
+                            <input type="hidden" id="cutOffDate" />
+                            @Html.HiddenFor(model => Model.TermInvestments.formID)
+                        </div>
+                        <div class="col-sm-2">
+
+                            @Html.LabelFor(model => Model.TermInvestments.InvestedAmount)<span> ( <i class="fa fa-rupee (alias)"></i> )</span><span class="required">*</span>
+                            @Html.TextBoxFor(model => Model.TermInvestments.InvestedAmount, new { @maxlength = "14", @class = "form-control input-xs applydecimal", @style = "text-align:right" })
+                            @Html.HiddenFor(model => Model.TermInvestments.InvestedAmount)
+                        </div>
+                        <div class="col-sm-2">
+                            @Html.LabelFor(model => Model.TermInvestments.PeriodInDays)
+                            @Html.TextBoxFor(model => Model.TermInvestments.PeriodInDays, new { @maxlength = "4", @class = "form-control input-xs applynumbers" })
+                            @*@Html.ValidationMessageFor(model => Model.TermInvestments.PeriodInDays)*@
+                        </div>
+                        <div class="col-sm-2">
+                            @Html.LabelFor(model => Model.TermInvestments.PeriodInMonths)<span class="required">*</span>
+                            @Html.TextBoxFor(model => Model.TermInvestments.PeriodInMonths, new { @maxlength = "3", @class = "form-control input-xs applynumbers" })
+                            @*@Html.ValidationMessageFor(model => Model.TermInvestments.PeriodInMonths)*@
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row" >
+                    <div class="col-sm-12">
+                        <div class="col-sm-2">
+                            @Html.LabelFor(model => Model.TermInvestments.ROI)<span class="required">*</span>
+                            @Html.TextBoxFor(model => Model.TermInvestments.ROI, new { @maxlength = "5", @class = "form-control input-xs applydecimal" })
+                            @Html.HiddenFor(model => Model.TermInvestments.ROI)
+                        </div>
+                        <div class="col-sm-2">
+                            @Html.LabelFor(model => Model.TermInvestments.ActualInterest)<span> ( <i class="fa fa-rupee (alias)"></i> )</span><span class="required">*</span>
+                            @Html.TextBoxFor(model => Model.TermInvestments.ActualInterest, new { @maxlength = "14", @class = "form-control input-xs applydecimal", @style = "text-align:right" })
+                            @Html.HiddenFor(model => Model.TermInvestments.ActualInterest)
+                        </div>
+                        <div class="col-sm-2">
+                            @Html.LabelFor(model => Model.TermInvestments.ActualMaturityAmount)<span> ( <i class="fa fa-rupee (alias)"></i> )</span><span class="required">*</span>
+                            @Html.TextBoxFor(model => Model.TermInvestments.ActualMaturityAmount, new { @maxlength = "14", @class = "form-control input-xs applydecimal", @style = "text-align:right" })
+                            @Html.HiddenFor(model => Model.TermInvestments.ActualMaturityAmount)
+                        </div>
+                        <div class="col-sm-2">
+                            @Html.LabelFor(model => Model.TermInvestments.MaturityDate)<span class="required">*</span>
+                            @Html.TextBoxFor(model => Model.TermInvestments.MaturityDate, "{0:yyyy-MM-dd}", new { @class = "form-control input-xs", @type = "date" })
+                            @Html.HiddenFor(model => Model.TermInvestments.MaturityDate)
+                        </div>                       
+                            @*<div>
+                                 <div class="input-float mr-tp-22">
+                                @Html.CheckBoxFor(model => model.TermInvestments.AddOBInterest, new { @checked = "checked", style = "opacity: 1;position: static;", @id = "AddInterestAmountToDeposit" })
+                                @Html.LabelFor(model => model.TermInvestments.AddOBInterest)
+                            </div>
+                            </div>*@
+                             <div class="col-sm-2" id="ObInterest">
+                            @Html.LabelFor(model => model.TermInvestments.OBInterestAmount)<span> ( <i class="fa fa-rupee (alias)"></i> )</span>
+                            @Html.TextBoxFor(model => model.TermInvestments.OBInterestAmount, new { @maxlength = "14", @class = "form-control input-xs applydecimal", @style = "text-align:right" })
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="widget">
+            <div class="modal-header">
+                <h4 class="modal-title">@resInvestmentLables.ShareInvestmentDetails</h4>
+            </div>
+            <div class="widget-body">
+                <div class="row">
+                    <div class="col-sm-12">                       
+                        <div class="col-sm-3">
+                            @Html.LabelFor(model => Model.ShareInvestments.AllottedShareCertificateNo)
+                            @Html.TextBoxFor(model => Model.ShareInvestments.AllottedShareCertificateNo, new { @maxlength = "40", @class = "form-control input-xs alphanumwithspecchar" })
+                            @Html.HiddenFor(model => Model.ShareInvestments.AllottedShareCertificateNo)
+                        </div>
+                        <div class="col-sm-3">
+                            @Html.LabelFor(model => Model.ShareInvestments.NoofSharesAllotted)
+                            @Html.TextBoxFor(model => Model.ShareInvestments.NoofSharesAllotted, new { @maxlength = "9", @class = "form-control input-xs applynumbers" })
+                            @Html.HiddenFor(model => Model.ShareInvestments.NoofSharesAllotted)
+                        </div>
+                        <div class="col-sm-3">
+                            @Html.LabelFor(model => Model.ShareInvestments.ShareValue)<span> ( <i class="fa fa-rupee (alias)"></i> )</span><span class="required">*</span>
+                            @Html.TextBoxFor(model => Model.ShareInvestments.ShareValue, new { @maxlength = "14", @class = "form-control input-xs applydecimal", @style = "text-align:right" })
+                            @Html.HiddenFor(model => Model.ShareInvestments.ShareValue)
+                        </div>
+                       
+                    </div>
+                </div>               
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-sm-2">
+                
+            </div>
+            <div class="col-sm-2">
+
+            </div>
+            <div class="col-sm-2">
+
+            </div>
+            <div class="col-sm-2">
+
+            </div>
+            <div class="col-sm-2">
+
+            </div>
+            <div class="col-sm-2">
+                <button type="submit" id="btnSave" style="margin-right: 9px;margin-left: -30px;" class="btn btn-default" title="Save(Alt + S)" value="Save" onclick="return ValidateControls(this);" accesskey="S">
+                    <i class="fa fa-save"></i>@resInvestmentLables.save
+                </button>
+                <button type="reset" value="Clear" class="btn btn-default" id="btnreset" title="Clear(Alt + C)" accesskey="C"><i class="fa fa-remove"></i>@resInvestmentLables.Clear</button>
+            </div>            
+        </div>
+    }
+</div>
+
+@section PageScripts{
+@*<link href="~/assets/dist/sweetalert.css" rel="stylesheet" />
+<script src="~/assets/dist/sweetalert.min.js"></script>
+<script src="~/Scripts/TextBoxValidations.js"></script>
+<script src="~/Scripts/jquery-1.8.2.min.js"></script>*@
+@*<script src="~/Scripts/ModuleScripts/Investments/InvestmentApplication.js"></script>*@
+<script src="~/Scripts/TextBoxValidations.js"></script>
+<script src="~/Scripts/jquery-1.8.2.min.js"></script>
+<script src="~/Scripts/ModuleScripts/Investments/InvestmentApp.js"></script>
+
+
+<script>
+    $(document).ready(function () {
+    debugger;
+    var loginDate = '@ViewBag.LoginDate';
+    var formid = '@ViewBag.formid';
+    var cutOffDt ='@ViewBag.cutOffDt';
+    $('#TermInvestments_formID').val(formid);
+
+    debugger;
+    //Code Changed by Sunil Start
+    document.getElementById('TermInvestments_BoardResolutionDate').value = '@ViewBag.LoginDate';
+    document.getElementById('TermInvestments_InvestedDate').value = '@ViewBag.LoginDate';
+    //Code Changed by Sunil End
+
+    //document.getElementById('TermInvestments_MaturityDate').value = '@ViewBag.LoginDate';
+    document.getElementById('LoginDateHidden').value = '@ViewBag.LoginDate';
+    document.getElementById('cutOffDate').value ='@ViewBag.cutOffDt';
+    
+    //$('#ObInterest').hide();
+    document.getElementById('TermInvestments_OBInterestAmount').disabled = true;
+    debugger;
+
+    //document.getElementById('TermInvestments_TranscationDate').disabled = true;
+    document.getElementById('TermInvestments_MaturityDate').disabled = true;
+    document.getElementById('IsBankControlesVisible').style.visibility = "hidden";
+    $('#IsFreqCompulsory').hide();
+    //document.getElementById("TermInvestments_TranscationDate").readOnly = true;
+});
+</script>
+    
+<script type="text/javascript">
+   
+    </script>
+    <script type="text/javascript">
+   
+</script>
+
+
+    
+    @*Key Press*@
+    <script>
+    $('.applydecimal').blur(function () {
+        extractNumber(this, 2, false);
+    });
+    $('.applydecimal').keyup(function () {
+        extractNumber(this, 2, false);
+    });
+    $('.applydecimal').keypress(function () {
+        return blockNonNumbers(this, event, true, false);
+    });
+    $('.alphanum').keypress(function (e) {
+        return AlphaNumCheck(e);
+    });
+    $('.alphanumwithspecchar').keypress(function (e) {
+        return AlphaNumWithSpecialCharactersCheck(e);
+    });
+    $('.applynumbers').blur(function () {
+        extractNumber(this, 0, false);
+    });
+    $('.applynumbers').keyup(function () {
+        extractNumber(this, 0, false);
+    });
+    $('.applynumbers').keypress(function () {
+        return blockNonNumbers(this, event, false, false);
+    });
+    $('.applyalpha').keypress(function (e) {
+        return AlphaCheck(e);
+    });
+    $('.applyNumWithSlash').keypress(function (e) {
+        return NumericsWithSpecialCharactersSlashCheck(e);
+    });
+    </script>
+
+    <script type="text/javascript">
+        $(function () {
+            //Code Added by Sunil
+            debugger;
+            $('#TermInvestments_InvestmentID').change(function () {
+                debugger;
+                var investmentType = document.getElementById('TermInvestments_InvestmentID').value;
+                if (investmentType == 72) {
+                    $('#TermInvestmentDetails').hide();
+                    
+                  
+                }
+                else{
+                    $('#TermInvestmentDetails').show();
+                    
+                   
+                }
+                if (investmentType > 0) {
+                    $.ajax({
+                        url: '@Url.Action("GetInvestTypeMasterId")',
+                        type: 'Get',
+                        datatype: 'json',
+                        data: { investmentTypeId: investmentType },
+                        contentType: 'application/json',
+                        success: function (result) {
+                            debugger;
+                            if (result > 0) {
+                                document.getElementById('TermInvestments_TypeOfInvestment').value = result;
+                                // 3 : Type of investments (3=share type, 2=Term deposits type)
+                                if (result == 3) {
+                                    debugger;
+                                    DisableTerm();
+                                    EnableShare();
+                                }
+                                else
+                                {
+                                    debugger;
+                                    DisableShare();
+                                    EnableTerm();
+                                }
+                            }
+
+                        }
+                    })
+                }
+                //if(investmentType == 72)
+                //{
+                //    debugger;
+                //    DisableTerm();
+                //    EnableShare();
+                //}
+                //else
+                //{
+                //    debugger;
+                //    DisableShare();
+                //    EnableTerm();
+                //}
+            })
+        })
+       
+        $(function () {
+            $('#TermInvestments_DepositType').change(function () {
+                var investmentType = document.getElementById('TermInvestments_DepositType').value;
+                if(investmentType == 1)
+                {
+                    $('#IsFreqCompulsory').hide();
+                    debugger;                    
+                    DisableNonCum();                    
+                }
+                else {
+                    $('#IsFreqCompulsory').show();
+                    debugger;
+                    EnableNonCum();
+                }
+            })
+        })
+
+        $(function () {
+    $('#TermInvestments_ROI').focusout(function () {
+        debugger;
+        var roi = document.getElementById('TermInvestments_ROI').value;
+    var days = document.getElementById('TermInvestments_PeriodInDays').value;
+    if (days == "") {
+        document.getElementById('TermInvestments_PeriodInDays').value = 0;
+    }
+    debugger;
+    if (roi < 0 || roi > 50) {
+        document.getElementById('TermInvestments_ROI').value = 0;
+        return
+    }
+    if (roi == ".") {
+        document.getElementById('TermInvestments_ROI').value = 0;
+        return;
+    }
+    var frequencyCode = document.getElementById('TermInvestments_FrequencyTypeID').value;
+    if (frequencyCode == "" || frequencyCode == null)
+        frequencyCode = 0;
+    var depositType = document.getElementById('TermInvestments_DepositType').value;
+    var depositAmt = document.getElementById('TermInvestments_InvestedAmount').value;
+    var days = document.getElementById('TermInvestments_PeriodInDays').value;
+    if (days == "")
+        days = 0;
+    var months = document.getElementById('TermInvestments_PeriodInMonths').value;
+    if (months == "")
+        months = 0;
+    var DepositDate = document.getElementById('TermInvestments_InvestedDate').value;
+    debugger;
+    //var MaturityDate = document.getElementById('TermInvestments_MaturityDate').value;
+    $.ajax({
+        url: '@Url.Action("GetInterestAmount")',
+        type: 'Get',
+        data: { FrequencyCode: frequencyCode, DepositType: depositType, days: days, months: months, depositAmount: depositAmt, roi: roi, DepositDate: DepositDate },
+        dataType: 'json',
+        contentType: 'application/json',
+        success: function (result) {
+            debugger;
+            if (result.object1 > 0)
+                document.getElementById('TermInvestments_ActualInterest').value = result.object1.toFixed(2);
+            var NonCumulative = document.getElementById('TermInvestments_DepositType').value;
+            if (NonCumulative == 2) {
+                document.getElementById('TermInvestments_ActualMaturityAmount').value = (parseFloat(document.getElementById('TermInvestments_InvestedAmount').value)).toFixed(2);
+                if (frequencyCode == 11)
+                    document.getElementById('TermInvestments_ActualMaturityAmount').value = (parseFloat(document.getElementById('TermInvestments_InvestedAmount').value) + parseFloat(result.object1)).toFixed(2);
+            }
+            if (NonCumulative != 2)
+                document.getElementById('TermInvestments_ActualMaturityAmount').value = (parseFloat(document.getElementById('TermInvestments_InvestedAmount').value) + parseFloat(result.object1)).toFixed(2);
+            document.getElementById('TermInvestments_MaturityDate').disabled = false;
+            document.getElementById('TermInvestments_MaturityDate').value = ConvertDateforDDMMYYYYwithHiforInv(result.object2);
+            $("#TermInvestments_ActualInterest").focus();
+        }
+    });
+        //GetInterest();
+    });
+});
+    </script>
+    @*Disable and Enable*@ 
+   
+
+    @*BankType Change*@ 
+<script>
+
+
+
+</script>
+
+@*Bank Change*@ 
+<script>
+    
+</script>
+
+@*Validate while saving*@
+<script>
+    
+</script>
+}

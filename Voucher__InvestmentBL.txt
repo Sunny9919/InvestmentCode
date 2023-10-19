@@ -1,0 +1,952 @@
+﻿using Intellect.Unite.WebPackages.DepositInterestCalculator.BL;
+using Intellect.Unite.WebPackages.FAS.BL;
+using Intellect.Unite.WebPackages.FAS.Model;
+using Intellect.Unite.WebPackages.Mdm.BL;
+using Intellect.Unite.WebPackages.Mdm.Model;
+using Intellect.Unite.WebPackages.Investment.BL;
+using Intellect.Unite.WebPackages.Investment.Model;
+using Intellect.Unite.WebPackages.VoucherProcessing.Model;
+using Intellect.Unite.WebPackages.VoucherProcessing.Model.DTO;
+using log4net;
+using NHibernate;using Microsoft.Extensions.Configuration;
+using NHibernate.Context;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Intellect.Unite.WebPackages.Membership.Model;
+using Intellect.Unite.WebPackages.FAS.Model.DTO;
+//
+
+namespace Intellect.Unite.WebPackages.VoucherProcessing.BL
+{
+    public class InvestmentBL : IDisposable
+    {
+        //public Intellect.Unite.WebPackages.UserManagement.Model.UserCredentials GlobalUserCredentials { get; set; }
+        ILog log = LogManager.GetLogger(typeof(TermDepositsBL));
+        ISession session;
+
+        public InvestmentBL()
+        {
+            var culture = System.Globalization.CultureInfo.CreateSpecificCulture("en-GB"); var dbtype = Convert.ToInt32(new ConfigurationBuilder().AddJsonFile("appsettings.json", true, false).Build().GetSection("APIKeys:DBType").Value);
+            System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("en-GB");
+            System.Threading.Thread.CurrentThread.CurrentUICulture = System.Threading.Thread.CurrentThread.CurrentCulture;
+            var v = new System.Globalization.DateTimeFormatInfo();
+             if(dbtype == 1){v.ShortDatePattern = "dd/MM/yyyy";}else if(dbtype == 2){v.ShortDatePattern = "yyyy/MM/dd";}else{v.ShortDatePattern = "dd/MM/yyyy";}
+            System.Threading.Thread.CurrentThread.CurrentUICulture.DateTimeFormat = v;
+            System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
+            System.Globalization.CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat = v;
+            //var str = ISessionFactoryPool._sessionFactoryPool[Repository._ipAddress];
+            //session = str.OpenSession();
+            //;
+            log.Debug("Entered");
+            if (!CurrentSessionContext.HasBind(Intellect.Unite.WebPackages.Mdm.BL.SessionFactory.ISessionFactory))
+                CurrentSessionContext.Bind(Intellect.Unite.WebPackages.Mdm.BL.SessionFactory.ISessionFactory.OpenSession());
+            session = Intellect.Unite.WebPackages.Mdm.BL.SessionFactory.ISessionFactory.GetCurrentSession();
+            if (!session.IsOpen)
+            {
+                CurrentSessionContext.Bind(SessionFactory.ISessionFactory.OpenSession());
+                session = SessionFactory.ISessionFactory.GetCurrentSession();
+            }
+        }
+        public InvestmentBL(ISession session)
+        {
+            var culture = System.Globalization.CultureInfo.CreateSpecificCulture("en-GB"); var dbtype = Convert.ToInt32(new ConfigurationBuilder().AddJsonFile("appsettings.json", true, false).Build().GetSection("APIKeys:DBType").Value);
+            System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("en-GB");
+            System.Threading.Thread.CurrentThread.CurrentUICulture = System.Threading.Thread.CurrentThread.CurrentCulture;
+            var v = new System.Globalization.DateTimeFormatInfo();
+             if(dbtype == 1){v.ShortDatePattern = "dd/MM/yyyy";}else if(dbtype == 2){v.ShortDatePattern = "yyyy/MM/dd";}else{v.ShortDatePattern = "dd/MM/yyyy";}
+            System.Threading.Thread.CurrentThread.CurrentUICulture.DateTimeFormat = v;
+            System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
+            System.Globalization.CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat = v;
+            this.session = session;
+           // ;
+            log.Debug("Entered");
+            //if (!CurrentSessionContext.HasBind(Intellect.Unite.WebPackages.Mdm.BL.SessionFactory.ISessionFactory))
+            //    CurrentSessionContext.Bind(Intellect.Unite.WebPackages.Mdm.BL.SessionFactory.ISessionFactory.OpenSession());
+            //session = Intellect.Unite.WebPackages.Mdm.BL.SessionFactory.ISessionFactory.GetCurrentSession();
+            //if (!session.IsOpen)
+            //{
+            //    CurrentSessionContext.Bind(SessionFactory.ISessionFactory.OpenSession());
+            //    session = SessionFactory.ISessionFactory.GetCurrentSession();
+            //}
+        }
+        
+        public void Dispose()
+        {
+            if (session.IsOpen)
+            {
+                session.Clear();
+                session.Close();
+                session.Dispose();
+            }
+        }
+
+        #region Application
+        public IList<TransactionTypeMasterDTO> GetFilledGridDataByActivityForInvestmentApplication(int SWTranPkey, long pacsid, int branchid, int productid, AccountDetails accountcode, long LedgerCode)
+        {
+            log.Debug(" Entering into GetFilledGridDataByActivityForInvestmentApplication");
+           // log.Error(" Entering into GetFilledGridDataByActivityForInvestmentApplication,SWTranPkey "+SWTranPkey+" ,pacsid "+pacsid+",branchid "+branchid+",productid  "+productid+",accountcode"  + accountcode.AccountCode);
+            IList<TransactionTypeMasterDTO> listTransrollMappingDTO = new List<TransactionTypeMasterDTO>();
+            TransactionTypeMasterDTO mainruleforoneledger = GetInvestDataByActivityId(SWTranPkey, pacsid, branchid, productid, accountcode, LedgerCode);
+            if (mainruleforoneledger != null)
+            {
+                listTransrollMappingDTO.Add(mainruleforoneledger);
+            }
+            //log.Error(" Leave into GetFilledGridDataByActivityForInvestmentApplication,SWTranPkey " + SWTranPkey + " ,pacsid " + pacsid + ",branchid " + branchid + ",productid  " + productid + ",accountcode" + accountcode.AccountCode);
+            log.Debug(" Leaving into GetFilledGridDataByActivityForInvestmentApplication");
+            return listTransrollMappingDTO;
+        }
+
+        private TransactionTypeMasterDTO GetInvestDataByActivityId(int SWTranPkey, long pacsid, int branchid, int productid, AccountDetails accountcode, long LedgerCode)
+        {
+            log.Debug(" Entering into GetInvestDataByActivityId");
+            //log.Error(" Entering into GetInvestDataByActivityId,SWTranPkey,pacsid -{1},branchid-{2},productid-{3},accountcode-{4}"+SWTranPkey +pacsid, branchid, productid, accountcode.AccountCode);
+            //log.Error(" Entering into GetInvestDataByActivityId,SWTranPkey " + SWTranPkey + " ,pacsid " + pacsid + ",branchid " + branchid + ",productid  " + productid + ",accountcode" + accountcode.AccountCode);
+            TransactionTypeMasterDTO objTransactionTypeMasterDTO = new TransactionTypeMasterDTO();
+            IList<MappingTransrollForFirm> listSWTransrollMapping = GetTransRollsByActivityID(SWTranPkey, productid, pacsid, branchid, LedgerCode);
+            //SWActivityTypeMaster objactivity = session.Load<SWActivityTypeMaster>(Convert.ToInt64( SWTranPkey));
+            TransactionBL objTransactionBL = new TransactionBL(session);
+            //long transactionid = objTransactionBL.GetTransactionID(SWTranPkey);
+            //log.Error(" Entering into GetInvestAmountBasedonAccountAndProduct,SWTranPkey ");
+            decimal calculatedAmount = GetInvestAmountBasedonAccountAndProduct(pacsid, branchid, productid, accountcode.AccountCode);
+            //log.Error(" Leave into GetInvestAmountBasedonAccountAndProduct,SWTranPkey " + calculatedAmount);
+            //ProductWiseActivities objactivity = session.Load<ProductWiseActivities>(Convert.ToInt64(SWTranPkey));
+            if (listSWTransrollMapping.Count != 0 && calculatedAmount != 0)
+            {
+                objTransactionTypeMasterDTO = new TransactionTypeMasterDTO();
+                objTransactionTypeMasterDTO.TransactionID = 16011;//transactionid;// objactivity.TransactionId;
+                objTransactionTypeMasterDTO.Ledger = listSWTransrollMapping[0].LedgerID;
+                objTransactionTypeMasterDTO.LedgerDescription = listSWTransrollMapping[0].LedgerDescription;
+                objTransactionTypeMasterDTO.TransrollID = Convert.ToInt32(listSWTransrollMapping[0].TransRoll);
+                objTransactionTypeMasterDTO.TransrollDescription = listSWTransrollMapping[0].TransRollDescription;
+                objTransactionTypeMasterDTO.ProductTypeID = accountcode.ProductTypeID.ProductTypeID;
+                objTransactionTypeMasterDTO.ProductID = accountcode.ProductID.Slno;
+                objTransactionTypeMasterDTO.Amount = calculatedAmount;
+                objTransactionTypeMasterDTO.MaxAmount = calculatedAmount;                
+                //objTransactionTypeMasterDTO.MinAmount = 1;
+            }
+            //log.Error(" Entering into GetInvestDataByActivityId,SWTranPkey " + SWTranPkey + " ,pacsid " + pacsid + ",branchid " + branchid + ",productid  " + productid + ",accountcode" + accountcode.AccountCode);
+            log.Debug(" Leaving into GetInvestDataByActivityId");
+            return objTransactionTypeMasterDTO;
+        }
+
+        public IList<MappingTransrollForFirm> GetTransRollsByActivityID(int SWTranPkey, int productid,long pacsid, int branchid, long Ledger)
+        {
+            log.Debug(" Entering into GetTransRollsByActivityID");
+            //log.Error("Entering GetTransRollsByActivityID  SWTranPkey-{0}"+SWTranPkey);
+            IList<MappingTransrollForFirm> listSWTransrollMapping = new List<MappingTransrollForFirm>();
+            //IQuery query = session.CreateQuery("from MappingTransrollForFirm TM where TM.ProductwiseActivityPKey.PKey=:TranPkey ");
+            //query.SetParameter("TranPkey", SWTranPkey);
+            //listSWTransrollMapping = query.List<MappingTransrollForFirm>();
+            listSWTransrollMapping = session.QueryOver<MappingTransrollForFirm>().Where(i => i.FinActivity == SWTranPkey && i.MainLedger == Ledger && i.PacsID == pacsid && i.BranchID == branchid).List();
+            //log.Error("Leaving GetTransRollsByActivityID  SWTranPkey-{0}"+SWTranPkey);
+            if (listSWTransrollMapping.Count == 0)
+            {
+                listSWTransrollMapping = session.QueryOver<MappingTransrollForFirm>().Where(i => i.FinActivity == SWTranPkey && i.MainLedger == Ledger && i.PacsID == 0 && i.BranchID == 0).List();
+            }
+            log.Debug(" Leaving into GetTransRollsByActivityID");
+            return listSWTransrollMapping;
+        }
+
+        public decimal GetInvestAmountBasedonAccountAndProduct(long pacsid, int branchid, int ProductCode, string AccountNo)
+        {
+            log.Debug(" Entering into GetInvestAmountBasedonAccountAndProduct");
+            //log.Error(" Entering into GetInvestAmountBasedonAccountAndProduct,pacsid -{1},branchid-{2},ProductCode-{3},AccountNo-{4}", pacsid, branchid, ProductCode, AccountNo);
+          //  log.Error(" Entering into GetInvestAmountBasedonAccountAndProduct,pacsid " + pacsid + ",branchid " + branchid + ",productid  " + ProductCode + ",accountcode" + AccountNo);
+            decimal DepositAmount = 0.00m;
+            InvestmentApplicationDetailsMain objInvestmentApplicationDetails = new InvestmentApplicationDetailsMain();
+            //objInvestmentApplicationDetails.PacsIDPkey
+            IQuery query1 = session.CreateQuery("from InvestmentApplicationDetailsMain objInv where objInv.Status = :status and objInv.AccountNo = :AccountNo and objInv.BranchIDPkey =:branchId and objInv.PacsIDPkey=:pacsid");            
+            query1.SetParameter("pacsid", pacsid);
+            query1.SetParameter("branchId", branchid);
+            query1.SetParameter("AccountNo", AccountNo);
+            query1.SetParameter("status", "P");
+            objInvestmentApplicationDetails = query1.UniqueResult<InvestmentApplicationDetailsMain>();
+            if (objInvestmentApplicationDetails != null)
+            {
+                if (objInvestmentApplicationDetails != null)
+                {
+                    InvestmentApplicationDetails objLst = objInvestmentApplicationDetails.InvestmentApplicationDetails.LastOrDefault();
+                    DepositAmount = objLst.InvestedAmount;
+                }
+            }
+            //log.Error(" Leave into GetInvestAmountBasedonAccountAndProduct,pacsid " + pacsid + ",branchid " + branchid + ",productid  " + ProductCode + ",accountcode" + AccountNo);
+            return DepositAmount;
+        }
+
+        #endregion
+        
+        #region Interest Payments
+        public IList<TransactionTypeMasterDTO> GetFilledGridDataByActivityForInterestPayments(int SWTranPkey, long pacsid, int branchid, int productid, AccountDetails accountcode, long LedgerCode, DateTime logindate, int? formid)
+        {
+            log.Debug(" Entering into GetFilledGridDataByActivityForInterestPayments,SWTranPkey " + SWTranPkey + " ,pacsid " + pacsid + ",branchid " + branchid + ",productid  " + productid + ",accountcode" + accountcode.AccountCode);
+            IList<TransactionTypeMasterDTO> listTransrollMappingDTO = new List<TransactionTypeMasterDTO>();
+            TransactionTypeMasterDTO mainruleforoneledger = GetInvestDataByActivityIdInterestPayments(SWTranPkey, pacsid, branchid, productid, accountcode, LedgerCode, logindate, formid);
+            if (mainruleforoneledger != null)
+            {
+                listTransrollMappingDTO.Add(mainruleforoneledger);
+            }
+            log.Debug(" Leave into GetFilledGridDataByActivityForInterestPayments,SWTranPkey " + SWTranPkey + " ,pacsid " + pacsid + ",branchid " + branchid + ",productid  " + productid + ",accountcode" + accountcode.AccountCode);
+            return listTransrollMappingDTO;
+        }
+
+        private TransactionTypeMasterDTO GetInvestDataByActivityIdInterestPayments(int SWTranPkey, long pacsid, int branchid, int productid, AccountDetails accountcode, long LedgerCode, DateTime logindate, int? formid)
+        {
+            log.Debug(" Entering into GetInvestDataByActivityIdInterestPayments,SWTranPkey " + SWTranPkey + " ,pacsid " + pacsid + ",branchid " + branchid + ",productid  " + productid + ",accountcode" + accountcode.AccountCode);
+            TransactionTypeMasterDTO objTransactionTypeMasterDTO = new TransactionTypeMasterDTO();
+            ProductTypeWiseActivity prodTypeActivity = session.QueryOver<ProductTypeWiseActivity>().Where(i => i.FormId == formid && i.Activities.ActivityId == SWTranPkey).SingleOrDefault();
+            IList<MappingTransrollForFirm> listSWTransrollMapping = GetTransRollsByActivityIDInterestPayments(SWTranPkey, productid, pacsid, branchid, LedgerCode,prodTypeActivity);
+            //SWActivityTypeMaster objactivity = session.Load<SWActivityTypeMaster>(Convert.ToInt64( SWTranPkey));
+            TransactionBL objTransactionBL = new TransactionBL(session);
+            //long transactionid = objTransactionBL.GetTransactionID(SWTranPkey);
+            decimal calculatedAmount = GetInterestPayAmountBasedonAccountAndProduct(pacsid, branchid, productid, accountcode.AccountCode, logindate);
+            //ProductWiseActivities objactivity = session.Load<ProductWiseActivities>(Convert.ToInt64(SWTranPkey));
+            if (listSWTransrollMapping.Count != 0 && calculatedAmount != 0)
+            {
+                objTransactionTypeMasterDTO = new TransactionTypeMasterDTO();
+                objTransactionTypeMasterDTO.TransactionID = 16012;//transactionid;// objactivity.TransactionId;
+                objTransactionTypeMasterDTO.Ledger = listSWTransrollMapping[0].LedgerID;
+                objTransactionTypeMasterDTO.LedgerDescription = listSWTransrollMapping[0].LedgerDescription;
+                objTransactionTypeMasterDTO.TransrollID = Convert.ToInt32(listSWTransrollMapping[0].TransRoll);
+                objTransactionTypeMasterDTO.TransrollDescription = listSWTransrollMapping[0].TransRollDescription;
+                objTransactionTypeMasterDTO.ProductTypeID = accountcode.ProductTypeID.ProductTypeID;
+                objTransactionTypeMasterDTO.ProductID = accountcode.ProductID.Slno;
+                objTransactionTypeMasterDTO.Amount = calculatedAmount;
+                objTransactionTypeMasterDTO.MaxAmount = calculatedAmount;
+                //objTransactionTypeMasterDTO.MinAmount = 1;
+            }
+             if (calculatedAmount == 0)
+            {
+                objTransactionTypeMasterDTO = new TransactionTypeMasterDTO();
+                objTransactionTypeMasterDTO.TransactionID = 16012;//transactionid;// objactivity.TransactionId;
+                objTransactionTypeMasterDTO.MessageTest = "No Interest Payments before due date";
+            }
+             log.Debug(" Leave into GetInvestDataByActivityIdInterestPayments,SWTranPkey " + SWTranPkey + " ,pacsid " + pacsid + ",branchid " + branchid + ",productid  " + productid + ",accountcode" + accountcode.AccountCode);
+            return objTransactionTypeMasterDTO;
+        }
+
+        public IList<MappingTransrollForFirm> GetTransRollsByActivityIDInterestPayments(int SWTranPkey, int productid, long pacsid, int branchid, long Ledger, ProductTypeWiseActivity prodTypeActivity)
+        {
+            log.Debug("Entering GetTransRollsByActivityIDInterestPayments  SWTranPkey-{0}" + SWTranPkey);
+            IList<MappingTransrollForFirm> listSWTransrollMapping = new List<MappingTransrollForFirm>();            
+            listSWTransrollMapping = session.QueryOver<MappingTransrollForFirm>().Where(i => i.FinActivity == SWTranPkey && i.MainLedger == Ledger && i.PacsID == pacsid && i.BranchID == branchid && i.ProductTypeWise == prodTypeActivity.PKey).List();
+            if (listSWTransrollMapping.Count == 0)
+            {
+                listSWTransrollMapping = session.QueryOver<MappingTransrollForFirm>().Where(i => i.FinActivity == SWTranPkey && i.MainLedger == Ledger && i.PacsID == 0 && i.BranchID == 0 && i.ProductTypeWise == prodTypeActivity.PKey).List();
+            }
+            log.Debug("Leaving GetTransRollsByActivityIDInterestPayments  SWTranPkey-{0}" + SWTranPkey);
+            return listSWTransrollMapping;
+        }
+
+        public decimal GetInterestPayAmountBasedonAccountAndProduct(long pacsid, int branchid, int ProductCode, string AccountNo, DateTime logindate)
+        {
+            log.Debug(" Entering into GetInterestPayAmountBasedonAccountAndProduct,pacsid " + pacsid + ",branchid" + branchid + ",ProductCode" + ProductCode + ",AccountNo-{4}" + AccountNo);
+            decimal InterestAmount = 0.00m;
+            InvestmentApplicationDetailsMain objInvestmentApplicationDetails = new InvestmentApplicationDetailsMain();
+            //objInvestmentApplicationDetails.PacsIDPkey
+            IQuery query1 = session.CreateQuery("from InvestmentApplicationDetailsMain objInv where objInv.Status = :status and objInv.AccountNo = :AccountNo and objInv.BranchIDPkey =:branchId and objInv.PacsIDPkey=:pacsid");
+            query1.SetParameter("pacsid", pacsid);
+            query1.SetParameter("branchId", branchid);
+            query1.SetParameter("AccountNo", AccountNo);
+            query1.SetParameter("status", "A");
+            objInvestmentApplicationDetails = query1.UniqueResult<InvestmentApplicationDetailsMain>();
+            if (objInvestmentApplicationDetails != null)
+            {
+                InvestmentApplicationDetails objDetails = new InvestmentApplicationDetails();
+                objDetails = objInvestmentApplicationDetails.InvestmentApplicationDetails.OrderBy(i=>i.InvestedDate).LastOrDefault();
+                if (objDetails != null)
+                {
+                    DateTime CalculationFromDate = objDetails.InvestedDate;
+                    InvestmentInterestPayments objInvestmentInterestPayments = session.QueryOver<InvestmentInterestPayments>().Where(i => i.InvestmentNo.SlNoPkey == objInvestmentApplicationDetails.SlNoPkey && i.Status == "Paid").List<InvestmentInterestPayments>().OrderBy(i=>i.InterestReceivedDate).LastOrDefault();
+                    if (objInvestmentInterestPayments != null)
+                    {
+                        CalculationFromDate = Convert.ToDateTime(objInvestmentInterestPayments.InterestReceivedDate);
+                    }
+                    else
+                    {
+                        CalculationFromDate = objDetails.InvestedDate;
+                    }
+                    TimeSpan tmsp = logindate - CalculationFromDate;
+                    int days = Convert.ToInt32(tmsp.TotalDays);
+                    if (days > 0)
+                    {
+                        InterestAmount = (objDetails.InvestedAmount * objDetails.ROI * days) / 36500;
+                    }
+                    InterestAmount = Math.Round(InterestAmount,MidpointRounding.AwayFromZero);   
+                }
+            }
+            log.Debug(" Leave into GetInterestPayAmountBasedonAccountAndProduct,pacsid " + pacsid + ",branchid" + branchid + ",ProductCode" + ProductCode + ",AccountNo-{4}" + AccountNo);
+            return InterestAmount;
+        }
+       
+        #endregion
+
+        #region closure
+        public IList<TransactionTypeMasterDTO> GetFilledGridDataByActivityForClosure(int SWTranPkey, long pacsid, int branchid, int productid, AccountDetails accountcode, long LedgerCode, DateTime logindate, int? formid)
+        {
+            log.DebugFormat(" Entering into GetFilledGridDataByActivityForClosure,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            IList<TransactionTypeMasterDTO> listTransrollMappingDTO = new List<TransactionTypeMasterDTO>();
+            TransactionTypeMasterDTO mainruleforoneledger = GetInvestDataByActivityIdClosureInvAmt(SWTranPkey, pacsid, branchid, productid, accountcode, LedgerCode, logindate, formid);
+            if (mainruleforoneledger != null)
+            {
+                if (mainruleforoneledger.Amount>0)
+                listTransrollMappingDTO.Add(mainruleforoneledger);
+            }
+            TransactionTypeMasterDTO InvestInterestLedger = GetInvestDataByActivityIdClosureInvIntAmt(SWTranPkey, pacsid, branchid, productid, accountcode, LedgerCode, logindate, formid);
+            if (InvestInterestLedger != null)
+            {
+                if (mainruleforoneledger.Amount > 0)
+                listTransrollMappingDTO.Add(InvestInterestLedger);
+            }
+            log.DebugFormat(" Leaving into GetFilledGridDataByActivityForClosure,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            return listTransrollMappingDTO;
+        }
+
+        private TransactionTypeMasterDTO GetInvestDataByActivityIdClosureInvAmt(int SWTranPkey, long pacsid, int branchid, int productid, AccountDetails accountcode, long LedgerCode, DateTime logindate, int? formid)
+        {
+            log.DebugFormat(" Entering into GetInvestDataByActivityIdClosureInvAmt,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            TransactionTypeMasterDTO objTransactionTypeMasterDTO = new TransactionTypeMasterDTO();
+            ProductTypeWiseActivity prodTypeActivity = session.QueryOver<ProductTypeWiseActivity>().Where(i => i.FormId == formid && i.Activities.ActivityId == SWTranPkey).SingleOrDefault();
+            IList<MappingTransrollForFirm> listSWTransrollMapping = GetTransRollsByActivityIDClosure(SWTranPkey, productid, pacsid, branchid, LedgerCode, prodTypeActivity);
+            //SWActivityTypeMaster objactivity = session.Load<SWActivityTypeMaster>(Convert.ToInt64( SWTranPkey));
+            TransactionBL objTransactionBL = new TransactionBL(session);
+            //long transactionid = objTransactionBL.GetTransactionID(SWTranPkey);
+            decimal calculatedAmount = GetClosureInvAmountBasedonAccountAndProduct(pacsid, branchid, productid, accountcode.AccountCode, logindate);
+            //ProductWiseActivities objactivity = session.Load<ProductWiseActivities>(Convert.ToInt64(SWTranPkey));
+            if (listSWTransrollMapping.Count != 0 && calculatedAmount != 0)
+            {
+                objTransactionTypeMasterDTO = new TransactionTypeMasterDTO();
+                objTransactionTypeMasterDTO.TransactionID = 16013;//transactionid;// objactivity.TransactionId;
+                objTransactionTypeMasterDTO.Ledger = listSWTransrollMapping[0].LedgerID;
+                objTransactionTypeMasterDTO.LedgerDescription = listSWTransrollMapping[0].LedgerDescription;
+                objTransactionTypeMasterDTO.TransrollID = Convert.ToInt32(listSWTransrollMapping[0].TransRoll);
+                objTransactionTypeMasterDTO.TransrollDescription = listSWTransrollMapping[0].TransRollDescription;
+                objTransactionTypeMasterDTO.ProductTypeID = accountcode.ProductTypeID.ProductTypeID;
+                objTransactionTypeMasterDTO.ProductID = accountcode.ProductID.Slno;
+                objTransactionTypeMasterDTO.Amount = calculatedAmount;
+                objTransactionTypeMasterDTO.MaxAmount = calculatedAmount;
+                //objTransactionTypeMasterDTO.MinAmount = 1;
+            }
+            log.DebugFormat("Leaving into GetInvestDataByActivityIdClosureInvAmt,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            return objTransactionTypeMasterDTO;
+        }
+
+        public IList<MappingTransrollForFirm> GetTransRollsByActivityIDClosure(int SWTranPkey, int productid, long pacsid, int branchid, long Ledger, ProductTypeWiseActivity prodTypeActivity)
+        {
+            log.Debug("Entering GetTransRollsByActivityIDClosure  SWTranPkey-{0}" + SWTranPkey);
+            IList<MappingTransrollForFirm> listSWTransrollMapping = new List<MappingTransrollForFirm>();
+            //IQuery query = session.CreateQuery("from MappingTransrollForFirm TM where TM.ProductwiseActivityPKey.PKey=:TranPkey ");
+            //query.SetParameter("TranPkey", SWTranPkey);
+            //listSWTransrollMapping = query.List<MappingTransrollForFirm>();
+            listSWTransrollMapping = session.QueryOver<MappingTransrollForFirm>().Where(i => i.FinActivity == SWTranPkey && i.PacsID == pacsid && i.BranchID == branchid && i.ProductTypeWise == prodTypeActivity.PKey && i.MainLedger == Ledger).List();
+            if (listSWTransrollMapping.Count == 0)
+            {
+                listSWTransrollMapping = session.QueryOver<MappingTransrollForFirm>().Where(i => i.FinActivity == SWTranPkey && i.PacsID == 0 && i.BranchID == 0 && i.ProductTypeWise == prodTypeActivity.PKey && i.MainLedger == Ledger).List();
+            }
+            log.Debug("Leaving GetTransRollsByActivityIDClosure  SWTranPkey-{0}" + SWTranPkey);
+            return listSWTransrollMapping;
+        }
+
+        public decimal GetClosureInvAmountBasedonAccountAndProduct(long pacsid, int branchid, int ProductCode, string AccountNo, DateTime logindate)
+        {
+            CommonFasBL objcommBL = new CommonFasBL();
+            string ValueForParallel = objcommBL.GetParameterValueForParallelRun(pacsid, branchid);
+            log.DebugFormat(" Entering into GetClosureInvAmountBasedonAccountAndProduct,pacsid -{0},branchid-{1},ProductCode-{2},AccountNo-{3}", pacsid, branchid, ProductCode, AccountNo);
+            decimal InterestAmount = 0.00m;
+            InvestmentApplicationDetailsMain objInvestmentApplicationDetails = new InvestmentApplicationDetailsMain();
+            //objInvestmentApplicationDetails.PacsIDPkey
+            
+            //Sunil changed Code
+            if (ValueForParallel == "Y")
+            {
+                IQuery query1 = session.CreateQuery("from InvestmentApplicationDetailsMain objInv where objInv.AccountNo = :AccountNo and objInv.BranchIDPkey =:branchId and objInv.PacsIDPkey=:pacsid");
+                query1.SetParameter("pacsid", pacsid);
+                query1.SetParameter("branchId", branchid);
+                query1.SetParameter("AccountNo", AccountNo);               
+                objInvestmentApplicationDetails = query1.UniqueResult<InvestmentApplicationDetailsMain>();
+            }
+            else
+            {
+                IQuery query1 = session.CreateQuery("from InvestmentApplicationDetailsMain objInv where objInv.Status = :status and objInv.AccountNo = :AccountNo and objInv.BranchIDPkey =:branchId and objInv.PacsIDPkey=:pacsid");
+                query1.SetParameter("pacsid", pacsid);
+                query1.SetParameter("branchId", branchid);
+                query1.SetParameter("AccountNo", AccountNo);
+                query1.SetParameter("status", "A");
+                objInvestmentApplicationDetails = query1.UniqueResult<InvestmentApplicationDetailsMain>();
+            }
+
+
+           
+            if (objInvestmentApplicationDetails != null)
+            {
+                if (objInvestmentApplicationDetails != null)
+                {
+                    InvestmentApplicationDetails objApplicationDetails = new InvestmentApplicationDetails();
+                    objApplicationDetails = objInvestmentApplicationDetails.InvestmentApplicationDetails.LastOrDefault();
+                    if (objApplicationDetails != null)
+                    {
+                        InterestAmount = objApplicationDetails.InvestedAmount;
+                        IList<InvestmentInterestPosting> lstInvestPost = new List<InvestmentInterestPosting>();
+                        lstInvestPost = session.QueryOver<InvestmentInterestPosting>().Where(i => i.InvestmentNoPkey == objInvestmentApplicationDetails.SlNoPkey && i.PacId == objInvestmentApplicationDetails.PacsIDPkey && i.BranchId == objInvestmentApplicationDetails.BranchIDPkey && i.Status == "Due").List<InvestmentInterestPosting>();
+                        if (lstInvestPost.Count > 0)
+                            InterestAmount = lstInvestPost.Sum(i => i.InterestAmount) + InterestAmount;
+                    }
+                }
+            }
+            log.DebugFormat(" Entering into GetClosureInvAmountBasedonAccountAndProduct,pacsid -{0},branchid-{1},ProductCode-{2},AccountNo-{3}", pacsid, branchid, ProductCode, AccountNo);
+            return InterestAmount;
+        }
+
+        private TransactionTypeMasterDTO GetInvestDataByActivityIdClosureInvIntAmt(int SWTranPkey, long pacsid, int branchid, int productid, AccountDetails accountcode, long LedgerCode, DateTime logindate, int? formid)
+        {
+            log.DebugFormat(" Entering into GetInvestDataByActivityIdClosureInvIntAmt,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            TransactionTypeMasterDTO objTransactionTypeMasterDTO = new TransactionTypeMasterDTO();
+            ProductTypeWiseActivity prodTypeActivity = session.QueryOver<ProductTypeWiseActivity>().Where(i => i.FormId == formid && i.Activities.ActivityId == SWTranPkey).SingleOrDefault();
+            IList<MappingTransrollForFirm> listSWTransrollMapping = GetTransRollsByActivityIDClosure(SWTranPkey, productid, pacsid, branchid, LedgerCode, prodTypeActivity);
+            //SWActivityTypeMaster objactivity = session.Load<SWActivityTypeMaster>(Convert.ToInt64( SWTranPkey));
+            TransactionBL objTransactionBL = new TransactionBL(session);
+            //long transactionid = objTransactionBL.GetTransactionID(SWTranPkey);
+            decimal calculatedAmount = GetClosureInvIntAmountBasedonAccountAndProduct(pacsid, branchid, productid, accountcode.AccountCode, logindate);
+            //ProductWiseActivities objactivity = session.Load<ProductWiseActivities>(Convert.ToInt64(SWTranPkey));
+            if (listSWTransrollMapping.Count != 0 && calculatedAmount != 0)
+            {
+                objTransactionTypeMasterDTO = new TransactionTypeMasterDTO();
+                objTransactionTypeMasterDTO.TransactionID = 16013;//transactionid;// objactivity.TransactionId;
+                objTransactionTypeMasterDTO.Ledger = listSWTransrollMapping[1].LedgerID;
+                objTransactionTypeMasterDTO.LedgerDescription = listSWTransrollMapping[1].LedgerDescription;
+                objTransactionTypeMasterDTO.TransrollID = Convert.ToInt32(listSWTransrollMapping[1].TransRoll);
+                objTransactionTypeMasterDTO.TransrollDescription = listSWTransrollMapping[1].TransRollDescription;
+                objTransactionTypeMasterDTO.ProductTypeID = accountcode.ProductTypeID.ProductTypeID;
+                objTransactionTypeMasterDTO.ProductID = accountcode.ProductID.Slno;
+                objTransactionTypeMasterDTO.Amount = calculatedAmount;
+                objTransactionTypeMasterDTO.MaxAmount = calculatedAmount;
+                //objTransactionTypeMasterDTO.MinAmount = 1;
+            }
+            log.DebugFormat("Leaving into GetInvestDataByActivityIdClosureInvIntAmt,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            return objTransactionTypeMasterDTO;
+        }
+
+        public decimal GetClosureInvIntAmountBasedonAccountAndProduct(long pacsid, int branchid, int ProductCode, string AccountNo, DateTime logindate)
+        {
+            CommonFasBL objcommBL = new CommonFasBL();
+            string ValueForParallel = objcommBL.GetParameterValueForParallelRun(pacsid, branchid);
+            log.DebugFormat(" Entering into GetClosureInvIntAmountBasedonAccountAndProduct,pacsid -{0},branchid-{1},ProductCode-{2},AccountNo-{3}", pacsid, branchid, ProductCode, AccountNo);
+            decimal InterestAmount = 0.00m;
+            InvestmentApplicationDetailsMain objInvestmentApplicationDetails = new InvestmentApplicationDetailsMain();
+            //objInvestmentApplicationDetails.PacsIDPkey
+           
+            //Sunil changed Code
+            if (ValueForParallel == "Y")
+            {
+                IQuery query1 = session.CreateQuery("from InvestmentApplicationDetailsMain objInv where  objInv.AccountNo = :AccountNo and objInv.BranchIDPkey =:branchId and objInv.PacsIDPkey=:pacsid");
+                query1.SetParameter("pacsid", pacsid);
+                query1.SetParameter("branchId", branchid);
+                query1.SetParameter("AccountNo", AccountNo);                
+                objInvestmentApplicationDetails = query1.UniqueResult<InvestmentApplicationDetailsMain>();
+            }
+            else
+            {
+                IQuery query1 = session.CreateQuery("from InvestmentApplicationDetailsMain objInv where objInv.Status = :status and objInv.AccountNo = :AccountNo and objInv.BranchIDPkey =:branchId and objInv.PacsIDPkey=:pacsid");
+                query1.SetParameter("pacsid", pacsid);
+                query1.SetParameter("branchId", branchid);
+                query1.SetParameter("AccountNo", AccountNo);
+                query1.SetParameter("status", "A");
+                objInvestmentApplicationDetails = query1.UniqueResult<InvestmentApplicationDetailsMain>();
+            }
+           
+            if (objInvestmentApplicationDetails != null)
+            {
+                if (objInvestmentApplicationDetails != null)
+                {
+                    InvestmentApplicationDetails objApplicationDetails = new InvestmentApplicationDetails();
+                    objApplicationDetails = objInvestmentApplicationDetails.InvestmentApplicationDetails.LastOrDefault();
+                    if (objApplicationDetails != null)
+                    {
+                        //InterestAmount = objApplicationDetails.Interest;
+                        DateTime LstDt = objApplicationDetails.InvestedDate;
+                        if (objApplicationDetails.DepositType.InvestmentDepositTypeId == 2)
+                        {
+                            IList<InvestmentInterestPayments> lstInvetmentPay = new List<InvestmentInterestPayments>();
+                            lstInvetmentPay = session.QueryOver<InvestmentInterestPayments>().Where(i => i.InvestmentNo == objInvestmentApplicationDetails && i.Status == "Paid").List<InvestmentInterestPayments>();
+                            if (lstInvetmentPay.Count > 0)
+                            {
+                                LstDt = Convert.ToDateTime(lstInvetmentPay.OrderBy(i => i.InterestReceivedDate).LastOrDefault().InterestReceivedDate);
+                            }
+                            TimeSpan tmsp = logindate - LstDt;
+                            int days = Convert.ToInt32(tmsp.TotalDays);
+                            if (days > 0)
+                            {
+                                InterestAmount = (objApplicationDetails.InvestedAmount * objApplicationDetails.ROI * days) / 36500;
+                            }
+                        }
+                        else
+                        {
+                            InterestAmount = objApplicationDetails.Interest;
+                        }
+
+                        IList<InvestmentInterestPosting> lstInvestPost = new List<InvestmentInterestPosting>();
+                        lstInvestPost = session.QueryOver<InvestmentInterestPosting>().Where(i => i.InvestmentNoPkey == objInvestmentApplicationDetails.SlNoPkey && i.PacId == objInvestmentApplicationDetails.PacsIDPkey && i.BranchId == objInvestmentApplicationDetails.BranchIDPkey && i.Status == "Due").List<InvestmentInterestPosting>();
+                        if (lstInvestPost.Count > 0)
+                        {
+                            LstDt = lstInvestPost.LastOrDefault().InterestReceivedDate;
+                        }
+
+                        TimeSpan tmspDt = logindate - LstDt;
+                        int daysTot = Convert.ToInt32(tmspDt.TotalDays);
+                        if (daysTot > 0)
+                        {
+                            InterestAmount = (objApplicationDetails.InvestedAmount * objApplicationDetails.ROI * daysTot) / 36500;
+                        }
+
+                        InterestAmount = Math.Round(InterestAmount, MidpointRounding.AwayFromZero);
+                    }
+                }
+            }
+            log.DebugFormat(" Entering into GetClosureInvIntAmountBasedonAccountAndProduct,pacsid -{0},branchid-{1},ProductCode-{2},AccountNo-{3}", pacsid, branchid, ProductCode, AccountNo);
+            return InterestAmount;
+        }
+
+        
+        #endregion
+
+        #region Foreclosure
+        public IList<TransactionTypeMasterDTO> GetFilledGridDataByActivityForForeClosure(int SWTranPkey, long pacsid, int branchid, int productid, AccountDetails accountcode, long LedgerCode, DateTime logindate, int? formid)
+        {
+            log.DebugFormat(" Entering into GetFilledGridDataByActivityForForeClosure,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            IList<TransactionTypeMasterDTO> listTransrollMappingDTO = new List<TransactionTypeMasterDTO>();
+            TransactionTypeMasterDTO mainruleforoneledger = GetInvestDataByActivityIdForeClosure(SWTranPkey, pacsid, branchid, productid, accountcode, LedgerCode, logindate, formid);
+            if (mainruleforoneledger != null)
+            {
+                if (mainruleforoneledger.Amount > 0)
+                listTransrollMappingDTO.Add(mainruleforoneledger);
+            }
+            TransactionTypeMasterDTO InvestInterestLedger = GetInvestDataByActivityIdForeClosureIntAmt(SWTranPkey, pacsid, branchid, productid, accountcode, LedgerCode, logindate, formid);
+            if (InvestInterestLedger != null)
+            {
+                if (mainruleforoneledger.Amount > 0)
+                listTransrollMappingDTO.Add(InvestInterestLedger);
+            }
+            log.DebugFormat(" Leaving into GetFilledGridDataByActivityForForeClosure,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            return listTransrollMappingDTO;
+        }
+
+        private TransactionTypeMasterDTO GetInvestDataByActivityIdForeClosure(int SWTranPkey, long pacsid, int branchid, int productid, AccountDetails accountcode, long LedgerCode, DateTime logindate, int? formid)
+        {
+            log.DebugFormat(" Entering into GetInvestDataByActivityIdForeClosure,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            TransactionTypeMasterDTO objTransactionTypeMasterDTO = new TransactionTypeMasterDTO();
+            ProductTypeWiseActivity prodTypeActivity = session.QueryOver<ProductTypeWiseActivity>().Where(i => i.FormId == formid && i.Activities.ActivityId == SWTranPkey).SingleOrDefault();
+            IList<MappingTransrollForFirm> listSWTransrollMapping = GetTransRollsByActivityIDForeClosure(SWTranPkey, productid, pacsid, branchid, LedgerCode, prodTypeActivity);
+            //SWActivityTypeMaster objactivity = session.Load<SWActivityTypeMaster>(Convert.ToInt64( SWTranPkey));
+            TransactionBL objTransactionBL = new TransactionBL(session);
+            //long transactionid = objTransactionBL.GetTransactionID(SWTranPkey);
+            decimal calculatedAmount = GetForeClosureAmountBasedonAccountAndProduct(pacsid, branchid, productid, accountcode.AccountCode, logindate);
+            //ProductWiseActivities objactivity = session.Load<ProductWiseActivities>(Convert.ToInt64(SWTranPkey));
+            if (listSWTransrollMapping.Count != 0 && calculatedAmount != 0)
+            {
+                objTransactionTypeMasterDTO = new TransactionTypeMasterDTO();
+                objTransactionTypeMasterDTO.TransactionID = 16014;//transactionid;// objactivity.TransactionId;
+                objTransactionTypeMasterDTO.Ledger = listSWTransrollMapping[0].LedgerID;
+                objTransactionTypeMasterDTO.LedgerDescription = listSWTransrollMapping[0].LedgerDescription;
+                objTransactionTypeMasterDTO.TransrollID = Convert.ToInt32(listSWTransrollMapping[0].TransRoll);
+                objTransactionTypeMasterDTO.TransrollDescription = listSWTransrollMapping[0].TransRollDescription;
+                objTransactionTypeMasterDTO.ProductTypeID = accountcode.ProductTypeID.ProductTypeID;
+                objTransactionTypeMasterDTO.ProductID = accountcode.ProductID.Slno;
+                objTransactionTypeMasterDTO.Amount = calculatedAmount;
+                objTransactionTypeMasterDTO.MaxAmount = calculatedAmount;
+                //objTransactionTypeMasterDTO.MinAmount = 1;
+            }
+            log.DebugFormat("Leaving into GetInvestDataByActivityIdForeClosure,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            return objTransactionTypeMasterDTO;
+        }
+
+        public IList<MappingTransrollForFirm> GetTransRollsByActivityIDForeClosure(int SWTranPkey, int productid, long pacsid, int branchid, long Ledger, ProductTypeWiseActivity prodTypeActivity)
+        {
+            log.DebugFormat("Entering GetTransRollsByActivityIDForeClosure  SWTranPkey-{0}" + SWTranPkey);
+            IList<MappingTransrollForFirm> listSWTransrollMapping = new List<MappingTransrollForFirm>();
+            //IQuery query = session.CreateQuery("from MappingTransrollForFirm TM where TM.ProductwiseActivityPKey.PKey=:TranPkey ");
+            //query.SetParameter("TranPkey", SWTranPkey);
+            //listSWTransrollMapping = query.List<MappingTransrollForFirm>();
+            listSWTransrollMapping = session.QueryOver<MappingTransrollForFirm>().Where(i => i.FinActivity == SWTranPkey && i.PacsID == pacsid && i.BranchID == branchid && i.ProductTypeWise == prodTypeActivity.PKey && i.MainLedger == Ledger).List();
+
+            if (listSWTransrollMapping.Count == 0)
+            {
+                listSWTransrollMapping = session.QueryOver<MappingTransrollForFirm>().Where(i => i.FinActivity == SWTranPkey && i.PacsID == 0 && i.BranchID == 0 && i.ProductTypeWise == prodTypeActivity.PKey && i.MainLedger == Ledger).List();
+            }
+            log.DebugFormat("Leaving GetTransRollsByActivityIDForeClosure  SWTranPkey-{0}" + SWTranPkey);
+            return listSWTransrollMapping;
+        }
+
+        public decimal GetForeClosureAmountBasedonAccountAndProduct(long pacsid, int branchid, int ProductCode, string AccountNo, DateTime logindate)
+        {
+            CommonFasBL objcommBL = new CommonFasBL();
+            string ValueForParallel = objcommBL.GetParameterValueForParallelRun(pacsid, branchid);
+            log.DebugFormat(" Entering into GetForeClosureAmountBasedonAccountAndProduct pacsid -{0},branchid-{1},ProductCode-{2},AccountNo-{3}", pacsid, branchid, ProductCode, AccountNo);
+            decimal InvestedAmount = 0.00m;
+            InvestmentApplicationDetailsMain objInvestmentApplicationDetails = new InvestmentApplicationDetailsMain();
+            //objInvestmentApplicationDetails.PacsIDPkey
+            
+            //Sunil changed Code
+            if (ValueForParallel == "Y")
+            {
+                IQuery query1 = session.CreateQuery("from InvestmentApplicationDetailsMain objInv where  objInv.AccountNo = :AccountNo and objInv.BranchIDPkey =:branchId and objInv.PacsIDPkey=:pacsid");
+                query1.SetParameter("pacsid", pacsid);
+                query1.SetParameter("branchId", branchid);
+                query1.SetParameter("AccountNo", AccountNo);
+                
+                objInvestmentApplicationDetails = query1.UniqueResult<InvestmentApplicationDetailsMain>();
+            }
+            else
+            {
+                IQuery query1 = session.CreateQuery("from InvestmentApplicationDetailsMain objInv where objInv.Status = :status and objInv.AccountNo = :AccountNo and objInv.BranchIDPkey =:branchId and objInv.PacsIDPkey=:pacsid");
+                query1.SetParameter("pacsid", pacsid);
+                query1.SetParameter("branchId", branchid);
+                query1.SetParameter("AccountNo", AccountNo);
+                query1.SetParameter("status", "A");
+                objInvestmentApplicationDetails = query1.UniqueResult<InvestmentApplicationDetailsMain>();
+            }
+            
+            if (objInvestmentApplicationDetails != null)
+            {
+                if (objInvestmentApplicationDetails != null)
+                {
+                    InvestmentApplicationDetails objApplicationDetails = new InvestmentApplicationDetails();
+                    objApplicationDetails = objInvestmentApplicationDetails.InvestmentApplicationDetails.LastOrDefault();
+                    if (objApplicationDetails != null)
+                    {
+                        InvestedAmount = objApplicationDetails.InvestedAmount;
+                        IList<InvestmentInterestPosting> lstInvestPost = new List<InvestmentInterestPosting>();
+                        lstInvestPost = session.QueryOver<InvestmentInterestPosting>().Where(i => i.InvestmentNoPkey == objInvestmentApplicationDetails.SlNoPkey && i.PacId == objInvestmentApplicationDetails.PacsIDPkey && i.BranchId == objInvestmentApplicationDetails.BranchIDPkey && i.Status == "Due").List<InvestmentInterestPosting>();
+                        if (lstInvestPost.Count > 0)
+                            InvestedAmount = lstInvestPost.Sum(i => i.InterestAmount) + InvestedAmount;
+                    }
+                }
+            }
+            log.DebugFormat(" Entering into GetForeClosureAmountBasedonAccountAndProduct pacsid -{0},branchid-{1},ProductCode-{2},AccountNo-{3}", pacsid, branchid, ProductCode, AccountNo);
+            return InvestedAmount;
+        }
+
+
+        private TransactionTypeMasterDTO GetInvestDataByActivityIdForeClosureIntAmt(int SWTranPkey, long pacsid, int branchid, int productid, AccountDetails accountcode, long LedgerCode, DateTime logindate, int? formid)
+        {
+            log.DebugFormat(" Entering into GetInvestDataByActivityIdForeClosureIntAmt,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            TransactionTypeMasterDTO objTransactionTypeMasterDTO = new TransactionTypeMasterDTO();
+            ProductTypeWiseActivity prodTypeActivity = session.QueryOver<ProductTypeWiseActivity>().Where(i => i.FormId == formid && i.Activities.ActivityId == SWTranPkey).SingleOrDefault();
+            IList<MappingTransrollForFirm> listSWTransrollMapping = GetTransRollsByActivityIDForeClosure(SWTranPkey, productid, pacsid, branchid, LedgerCode, prodTypeActivity);
+            //SWActivityTypeMaster objactivity = session.Load<SWActivityTypeMaster>(Convert.ToInt64( SWTranPkey));
+            TransactionBL objTransactionBL = new TransactionBL(session);
+            //long transactionid = objTransactionBL.GetTransactionID(SWTranPkey);
+            decimal calculatedAmount = GetForeClosureIntAmountBasedonAccountAndProduct(pacsid, branchid, productid, accountcode.AccountCode, logindate);
+            //ProductWiseActivities objactivity = session.Load<ProductWiseActivities>(Convert.ToInt64(SWTranPkey));
+            if (listSWTransrollMapping.Count != 0 && calculatedAmount != 0)
+            {
+                objTransactionTypeMasterDTO = new TransactionTypeMasterDTO();
+                objTransactionTypeMasterDTO.TransactionID = 16014;//transactionid;// objactivity.TransactionId;
+                objTransactionTypeMasterDTO.Ledger = listSWTransrollMapping[1].LedgerID;
+                objTransactionTypeMasterDTO.LedgerDescription = listSWTransrollMapping[1].LedgerDescription;
+                objTransactionTypeMasterDTO.TransrollID = Convert.ToInt32(listSWTransrollMapping[1].TransRoll);
+                objTransactionTypeMasterDTO.TransrollDescription = listSWTransrollMapping[1].TransRollDescription;
+                objTransactionTypeMasterDTO.ProductTypeID = accountcode.ProductTypeID.ProductTypeID;
+                objTransactionTypeMasterDTO.ProductID = accountcode.ProductID.Slno;
+                objTransactionTypeMasterDTO.Amount = calculatedAmount;
+                objTransactionTypeMasterDTO.MaxAmount = calculatedAmount;
+                //objTransactionTypeMasterDTO.MinAmount = 1;
+            }
+            log.DebugFormat("Leaving into GetInvestDataByActivityIdForeClosureIntAmt,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            return objTransactionTypeMasterDTO;
+        }
+
+        public decimal GetForeClosureIntAmountBasedonAccountAndProduct(long pacsid, int branchid, int ProductCode, string AccountNo, DateTime logindate)
+        {
+            CommonFasBL objcommBL = new CommonFasBL();
+            string ValueForParallel = objcommBL.GetParameterValueForParallelRun(pacsid, branchid);
+            log.DebugFormat(" Entering into GetForeClosureIntAmountBasedonAccountAndProduct pacsid -{0},branchid-{1},ProductCode-{2},AccountNo-{3}", pacsid, branchid, ProductCode, AccountNo);
+            decimal InterestAmount = 0.00m;
+            InvestmentApplicationDetailsMain objInvestmentApplicationDetails = new InvestmentApplicationDetailsMain();
+            //objInvestmentApplicationDetails.PacsIDPkey
+            
+            //Sunil changed Code
+            if (ValueForParallel == "Y")
+            {
+                IQuery query1 = session.CreateQuery("from InvestmentApplicationDetailsMain objInv where  objInv.AccountNo = :AccountNo and objInv.BranchIDPkey =:branchId and objInv.PacsIDPkey=:pacsid");
+                query1.SetParameter("pacsid", pacsid);
+                query1.SetParameter("branchId", branchid);
+                query1.SetParameter("AccountNo", AccountNo);
+                
+                objInvestmentApplicationDetails = query1.UniqueResult<InvestmentApplicationDetailsMain>();
+            }
+            else
+            {
+                IQuery query1 = session.CreateQuery("from InvestmentApplicationDetailsMain objInv where objInv.Status = :status and objInv.AccountNo = :AccountNo and objInv.BranchIDPkey =:branchId and objInv.PacsIDPkey=:pacsid");
+                query1.SetParameter("pacsid", pacsid);
+                query1.SetParameter("branchId", branchid);
+                query1.SetParameter("AccountNo", AccountNo);
+                query1.SetParameter("status", "A");
+                objInvestmentApplicationDetails = query1.UniqueResult<InvestmentApplicationDetailsMain>();
+            }
+            
+            if (objInvestmentApplicationDetails != null)
+            {
+                if (objInvestmentApplicationDetails != null)
+                {
+                    InvestmentApplicationDetails objApplicationDetails = new InvestmentApplicationDetails();
+                    objApplicationDetails = objInvestmentApplicationDetails.InvestmentApplicationDetails.LastOrDefault();
+                    if (objApplicationDetails != null)
+                    {
+                        DateTime LstDt = objApplicationDetails.InvestedDate;
+                        if (objApplicationDetails.DepositType.InvestmentDepositTypeId == 2)
+                        {
+                            IList<InvestmentInterestPayments> lstInvetmentPay = new List<InvestmentInterestPayments>();
+                            lstInvetmentPay = session.QueryOver<InvestmentInterestPayments>().Where(i => i.InvestmentNo == objInvestmentApplicationDetails && i.Status=="Paid").List<InvestmentInterestPayments>();
+                            if (lstInvetmentPay.Count > 0)
+                            {
+                                LstDt = Convert.ToDateTime(lstInvetmentPay.OrderBy(i => i.InterestReceivedDate).LastOrDefault().InterestReceivedDate);
+                            }
+                        }
+                         IList<InvestmentInterestPosting> lstInvestPost = new List<InvestmentInterestPosting>();
+                        lstInvestPost = session.QueryOver<InvestmentInterestPosting>().Where(i => i.InvestmentNoPkey == objInvestmentApplicationDetails.SlNoPkey && i.PacId == objInvestmentApplicationDetails.PacsIDPkey && i.BranchId == objInvestmentApplicationDetails.BranchIDPkey && i.Status == "Due").List<InvestmentInterestPosting>();
+                        if (lstInvestPost.Count > 0)
+                        {
+                            LstDt = lstInvestPost.LastOrDefault().InterestReceivedDate;
+                        }
+
+                        TimeSpan tmsp = logindate - LstDt;
+                        int days = Convert.ToInt32(tmsp.TotalDays);
+                        if (days > 0)
+                        {
+                            InterestAmount = (objApplicationDetails.InvestedAmount * objApplicationDetails.ROI * days) / 36500;
+                        }
+                        //InterestAmount = objApplicationDetails.Interest;
+                        InterestAmount = Math.Round(InterestAmount, MidpointRounding.AwayFromZero);
+                    }
+                }
+            }
+            log.DebugFormat(" Leaving into GetForeClosureIntAmountBasedonAccountAndProduct pacsid -{0},branchid-{1},ProductCode-{2},AccountNo-{3}", pacsid, branchid, ProductCode, AccountNo);
+            return InterestAmount;
+        }
+        #endregion
+
+        #region Share
+       
+        #region transactions
+
+        public IList<TransactionTypeMasterDTO> GetFilledGridDataByActivityForShareDeposits(int SWTranPkey, long pacsid, int branchid, int productid, AccountDetails accountcode, long LedgerCode, DateTime logindate, int? formid)
+        {
+            log.DebugFormat(" Entering into GetFilledGridDataByActivityForShareDeposits,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            IList<TransactionTypeMasterDTO> listTransrollMappingDTO = new List<TransactionTypeMasterDTO>();
+            TransactionTypeMasterDTO mainruleforoneledger = GetInvestDataByActivityIdInvestShareDeposits(SWTranPkey, pacsid, branchid, productid, accountcode, LedgerCode, logindate, formid);
+            if (mainruleforoneledger != null)
+            {
+                listTransrollMappingDTO.Add(mainruleforoneledger);
+            }
+            log.DebugFormat(" Leaving into GetFilledGridDataByActivityForShareDeposits,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            return listTransrollMappingDTO;
+        }
+
+        private TransactionTypeMasterDTO GetInvestDataByActivityIdInvestShareDeposits(int SWTranPkey, long pacsid, int branchid, int productid, AccountDetails accountcode, long LedgerCode, DateTime logindate, int? formid)
+        {
+            log.DebugFormat(" Entering into GetInvestDataByActivityIdInvestShareDeposits,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            TransactionTypeMasterDTO objTransactionTypeMasterDTO = new TransactionTypeMasterDTO();
+            ProductTypeWiseActivity prodTypeActivity = session.QueryOver<ProductTypeWiseActivity>().Where(i => i.FormId == formid && i.Activities.ActivityId == SWTranPkey).SingleOrDefault();
+            IList<MappingTransrollForFirm> listSWTransrollMapping = GetTransRollsByActivityIDInterestPayments(SWTranPkey, productid, pacsid, branchid, LedgerCode, prodTypeActivity);            
+            TransactionBL objTransactionBL = new TransactionBL(session);
+
+            decimal amount = 0.00m;
+            if (listSWTransrollMapping.Count != 0 )
+            {
+                objTransactionTypeMasterDTO = new TransactionTypeMasterDTO();
+                if (formid==16006)
+                objTransactionTypeMasterDTO.TransactionID = 16015;//transactionid;// objactivity.TransactionId;
+                if (formid == 16007)
+                {
+                    objTransactionTypeMasterDTO.TransactionID = 16016;
+                    //InvestmentShareTranscation objlstDhareTrans = session.QueryOver<InvestmentShareTranscation>().where
+                }
+                objTransactionTypeMasterDTO.Ledger = listSWTransrollMapping[0].LedgerID;
+                objTransactionTypeMasterDTO.LedgerDescription = listSWTransrollMapping[0].LedgerDescription;
+                objTransactionTypeMasterDTO.TransrollID = Convert.ToInt32(listSWTransrollMapping[0].TransRoll);
+                objTransactionTypeMasterDTO.TransrollDescription = listSWTransrollMapping[0].TransRollDescription;
+                objTransactionTypeMasterDTO.ProductTypeID = accountcode.ProductTypeID.ProductTypeID;
+                objTransactionTypeMasterDTO.ProductID = accountcode.ProductID.Slno;
+                int yearCode = objTransactionBL.GetFinancialYearCode(logindate).YearCode;
+                objTransactionTypeMasterDTO.Amount = 0.00m;
+                objTransactionTypeMasterDTO.MaxAmount = GetShareBalnce(listSWTransrollMapping[0].LedgerID, pacsid, branchid, logindate.Year, logindate.AddDays(1), accountcode.LedgerPKey.LedgerType.LedgerTypeId, accountcode.AccountID);
+            }
+            log.DebugFormat("Leaving into GetInvestDataByActivityIdInvestShareDeposits,SWTranPkey -{0},pacsid -{1},branchid-{2},productid-{3},accountcode-{4}", SWTranPkey, pacsid, branchid, productid, accountcode.AccountCode);
+            return objTransactionTypeMasterDTO;
+        }
+
+        public string SaveInvestmentShareTransactions(VoucherMainTemp objVoucherMainTemp, long pacId, int branchId, bool isBackDate, string pacsSerialNo)
+        {
+            log.DebugFormat(" Entering into SaveInvestmentShareTransactions,pacsid -{0},branchid-{1}", pacId, branchId);
+            string errormessage = "";
+            try
+            {
+                decimal ShareBalance = 0.001m;
+                IList<Intellect.Unite.WebPackages.Investment.Model.InvestmentShareTranscation> ListShareTransactions = new List<Intellect.Unite.WebPackages.Investment.Model.InvestmentShareTranscation>();
+                if (objVoucherMainTemp != null) // To check voucher main object not null
+                {
+                    foreach (VoucherDetailsTemp objVoucherDetailsTemp in objVoucherMainTemp.VoucherDetailsTemp) // Looping each voucher details to fill transaction. 
+                    {
+                        #region Deposit
+                        if (objVoucherDetailsTemp.TransactionID == 16015 && objVoucherDetailsTemp.TransrollID != 99)
+                        {
+                            Intellect.Unite.WebPackages.Investment.Model.InvestmentShareTranscation objOtherDepositTransactions = new Intellect.Unite.WebPackages.Investment.Model.InvestmentShareTranscation();
+                            objOtherDepositTransactions.AccountCode = objVoucherDetailsTemp.AccountCode;
+                            //objOtherDepositTransactions.AdmissionNoPkey = objVoucherDetailsTemp.AccountCode.CustomerID;
+                            CommonFasBL fascommonbl = new CommonFasBL(session);
+                            if (objVoucherDetailsTemp.AccountCode != null && objVoucherDetailsTemp.TransrollID != 99)
+                            {
+                                objVoucherDetailsTemp.OpeningAmount = fascommonbl.GetLedgerBalanceByLedgercodeAndAccountID(objVoucherDetailsTemp.LedgerCode.LedgerId, objVoucherDetailsTemp.PacsId, objVoucherDetailsTemp.BranchId, objVoucherDetailsTemp.YearCode.YearCode, Convert.ToDateTime(objVoucherDetailsTemp.TransactionDate.AddDays(1)),objVoucherDetailsTemp.LedgerCode.LedgerType.LedgerTypeId, objVoucherDetailsTemp.AccountCode.AccountID);
+                                //objVoucherDetailsTemp.OpeningAmount = fascommonbl.GetLedgerBalanceByLedgercodeAndAccountID(objVoucherDetailsTemp.LedgerCode, objVoucherDetailsTemp.PacsId, objVoucherDetailsTemp.BranchId, objVoucherDetailsTemp.YearCode, Convert.ToDateTime(objVoucherDetailsTemp.TransactionDate.AddDays(1)), objVoucherDetailsTemp.AccountCode.AccountID);
+                            }
+                            objVoucherDetailsTemp.BalanceAmount = objVoucherDetailsTemp.OpeningAmount + objVoucherDetailsTemp.Debit - objVoucherDetailsTemp.Credit;
+                            if (isBackDate)
+                            {
+                                var accountdetails = objVoucherDetailsTemp.AccountCode;
+                                accountdetails.OBCreditAmount = objVoucherDetailsTemp.BalanceAmount;
+                                accountdetails.IDGeneratorForPacs = pacId;
+                                accountdetails.SerialNumberOfPacs = pacsSerialNo;
+                                session.Merge(accountdetails);
+                            }
+                            ShareBalance = objVoucherDetailsTemp.BalanceAmount;
+                            objOtherDepositTransactions.BalanceAmount = objVoucherDetailsTemp.BalanceAmount;
+                            objOtherDepositTransactions.BranchId = objVoucherDetailsTemp.BranchId;
+                            objOtherDepositTransactions.CashBookId = objVoucherDetailsTemp.CashBookId;
+                            objOtherDepositTransactions.Credit = 0;
+                            objOtherDepositTransactions.Debit = objVoucherDetailsTemp.Debit;
+                            objOtherDepositTransactions.LedgerCode = objVoucherDetailsTemp.LedgerCode;
+                            objOtherDepositTransactions.Narration = objVoucherDetailsTemp.Narration;
+                            objOtherDepositTransactions.OpeningAmount = objVoucherDetailsTemp.OpeningAmount;
+                            objOtherDepositTransactions.PacsId = objVoucherDetailsTemp.PacsId;
+                            objOtherDepositTransactions.IDGeneratorForPacs = pacId;
+                            objOtherDepositTransactions.SerialNumberOfPacs = pacsSerialNo;
+                            objOtherDepositTransactions.ProductId = objVoucherDetailsTemp.ProductId;
+                            objOtherDepositTransactions.ProductTypeID = objVoucherDetailsTemp.ProductTypeID;
+                            objOtherDepositTransactions.TransactionDate = objVoucherDetailsTemp.TransactionDate;
+                            objOtherDepositTransactions.TransactionID = objVoucherDetailsTemp.TransactionID;
+                            objOtherDepositTransactions.TransrollID = objVoucherDetailsTemp.TransrollID;
+                            objOtherDepositTransactions.ValueDate = objVoucherDetailsTemp.ValueDate;
+                            objOtherDepositTransactions.YearCode = objVoucherDetailsTemp.YearCode;                        
+                            objOtherDepositTransactions.IsIssueCertificate = false;
+                            objOtherDepositTransactions.InvestmentAccountNo = objVoucherDetailsTemp.AccountCode.AccountCode;
+                            ListShareTransactions.Add(objOtherDepositTransactions);
+                        }
+                        #endregion
+
+                        #region Withdrawal
+                        if (objVoucherDetailsTemp.TransactionID == 16016 && objVoucherDetailsTemp.TransrollID != 99)
+                        {
+                            Intellect.Unite.WebPackages.Investment.Model.InvestmentShareTranscation objOtherDepositTransactions = new Intellect.Unite.WebPackages.Investment.Model.InvestmentShareTranscation();
+                            objOtherDepositTransactions.AccountCode = objVoucherDetailsTemp.AccountCode;
+                            //objOtherDepositTransactions.AdmissionNoPkey = objVoucherDetailsTemp.AccountCode.CustomerID;
+                            CommonFasBL fascommonbl = new CommonFasBL(session);
+
+                            if (objVoucherDetailsTemp.AccountCode != null && objVoucherDetailsTemp.TransrollID != 99)
+                            {
+                                objVoucherDetailsTemp.OpeningAmount = fascommonbl.GetLedgerBalanceByLedgercodeAndAccountID(objVoucherDetailsTemp.LedgerCode.LedgerId, objVoucherDetailsTemp.PacsId, objVoucherDetailsTemp.BranchId, objVoucherDetailsTemp.YearCode.YearCode, Convert.ToDateTime(objVoucherDetailsTemp.TransactionDate.AddDays(1)),objVoucherDetailsTemp.LedgerCode.LedgerType.LedgerTypeId, objVoucherDetailsTemp.AccountCode.AccountID);
+                                //objVoucherDetailsTemp.OpeningAmount = fascommonbl.GetLedgerBalanceByLedgercodeAndAccountID(objVoucherDetailsTemp.LedgerCode, objVoucherDetailsTemp.PacsId, objVoucherDetailsTemp.BranchId, objVoucherDetailsTemp.YearCode, Convert.ToDateTime(objVoucherDetailsTemp.TransactionDate.AddDays(1)), objVoucherDetailsTemp.AccountCode.AccountID);
+                            }
+
+                            objVoucherDetailsTemp.BalanceAmount = objVoucherDetailsTemp.OpeningAmount - objVoucherDetailsTemp.Credit + objVoucherDetailsTemp.Debit;
+
+                            if (isBackDate)
+                            {
+                                var accountdetails = objVoucherDetailsTemp.AccountCode;
+                                accountdetails.OBCreditAmount = objVoucherDetailsTemp.BalanceAmount;
+                                accountdetails.IDGeneratorForPacs = pacId;
+                                accountdetails.SerialNumberOfPacs = pacsSerialNo;
+                                session.Merge(accountdetails);
+                            }
+                            ShareBalance = objVoucherDetailsTemp.BalanceAmount; 
+                            objOtherDepositTransactions.BalanceAmount = objVoucherDetailsTemp.BalanceAmount;
+                            objOtherDepositTransactions.BranchId = objVoucherDetailsTemp.BranchId;
+                            objOtherDepositTransactions.CashBookId = objVoucherDetailsTemp.CashBookId;
+                            objOtherDepositTransactions.Credit = objVoucherDetailsTemp.Credit;
+                            objOtherDepositTransactions.Debit = 0;
+                            objOtherDepositTransactions.LedgerCode = objVoucherDetailsTemp.LedgerCode;
+                            objOtherDepositTransactions.Narration = objVoucherDetailsTemp.Narration;
+                            objOtherDepositTransactions.OpeningAmount = objVoucherDetailsTemp.OpeningAmount;
+                            objOtherDepositTransactions.PacsId = objVoucherDetailsTemp.PacsId;
+                            objOtherDepositTransactions.IDGeneratorForPacs = pacId;
+                            objOtherDepositTransactions.SerialNumberOfPacs = pacsSerialNo;
+                            objOtherDepositTransactions.ProductId = objVoucherDetailsTemp.ProductId;
+                            objOtherDepositTransactions.ProductTypeID = objVoucherDetailsTemp.ProductTypeID;
+                            objOtherDepositTransactions.TransactionDate = objVoucherDetailsTemp.TransactionDate;
+                            objOtherDepositTransactions.TransactionID = objVoucherDetailsTemp.TransactionID;
+                            objOtherDepositTransactions.TransrollID = objVoucherDetailsTemp.TransrollID;
+                            objOtherDepositTransactions.ValueDate = objVoucherDetailsTemp.ValueDate;
+                            objOtherDepositTransactions.YearCode = objVoucherDetailsTemp.YearCode;
+                            objOtherDepositTransactions.InvestmentAccountNo = objVoucherDetailsTemp.AccountCode.AccountCode;
+                            objOtherDepositTransactions.IsIssueCertificate = false;
+                            ListShareTransactions.Add(objOtherDepositTransactions);
+                        }
+                        #endregion
+
+                    }
+                }
+            
+                if (ListShareTransactions.Count > 0)
+
+                    foreach (var transaction in ListShareTransactions)
+                    {
+                        transaction.VoucherNo = objVoucherMainTemp.VoucherNo;
+                        transaction.VoucherPkey = objVoucherMainTemp.VoucherMainId;
+                        transaction.IDGeneratorForPacs = pacId;
+                        transaction.SerialNumberOfPacs = pacsSerialNo;
+                        session.Save(transaction);
+
+                        if (ShareBalance == 0) // As Balance is zero for share investment considering as closed.
+                        {
+                            InvestmentApplicationDetailsMain objMain = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.AccountCode.AccountID == transaction.AccountCode.AccountID).SingleOrDefault();
+                            if (objMain != null)
+                            {
+                                objMain.Status = "C";
+                                session.Merge(objMain);
+                            }
+                        }
+                    }                
+            }
+            catch (Exception ex)
+            {
+                //TransactionErrorLogBL.TrackErrorLog(ex.Message, GlobalUserCredentials);
+                log.Error(ex);
+                //return null;
+            }
+            log.DebugFormat(" Leaving into SaveInvestmentShareTransactions,pacsid -{0},branchid-{1}", pacId, branchId);
+            return errormessage;
+        }
+
+        public decimal GetShareBalnce(long ledger, long pacId, int branchId, int yearcode, DateTime loginDate, int ledgerType, long AccountId)
+        {
+            log.DebugFormat(" Entering into GetShareBalnce,pacsid -{0},branchid-{1},ledger-{2}", pacId, branchId, ledger);
+            CommonFasBL objbl = new CommonFasBL();
+            // Sunil
+            string ValueForParallel = objbl.GetParameterValueForParallelRun(pacId, branchId);
+            decimal balance;
+           
+            if (ValueForParallel == "Y")
+            {
+                string accountDetailsTemp = "fa_accountdetails";
+                string voucherDetailsTemp = "fa_voucherdetailstemp";
+                balance = objbl.GetLedgerBalanceByLedgercodeAndAccountID(ledger, pacId, branchId, yearcode, loginDate, ledgerType, accountDetailsTemp, voucherDetailsTemp, AccountId);
+            }
+            else 
+            { 
+            balance = objbl.GetLedgerBalanceByLedgercodeAndAccountID(ledger, pacId, branchId, yearcode, loginDate, ledgerType, AccountId);
+            }
+            log.DebugFormat(" Leaving into GetShareBalnce,pacsid -{0},branchid-{1},ledger-{2}", pacId, branchId, ledger);
+            return balance;
+        }
+        #endregion
+        #endregion
+
+        #region Load Default Transfer accounts
+
+
+        #endregion
+
+     
+    }
+}

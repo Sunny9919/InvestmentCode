@@ -1,0 +1,975 @@
+﻿using ERPClient.Services;
+using Intellect.Unite.WebPackages.Framework.EndPointGenerator;
+using Intellect.Unite.WebPackages.Investment.DTO;
+using Intellect.Unite.WebPackages.Investment.Model;
+using Intellect.Unite.WebPackages.Mdm.Model;
+using Intellect.Unite.WebPackages.UserManagement.Model;
+using Intellect.UniteERP.MyResources.Membership;
+//using Intellect.Unite.WebPackages.Investment.AL;
+//using Intellect.Unite.WebPackages.Mdm.AL;
+using log4net;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+namespace ERPClient.Areas.Investment.Controllers
+{
+    [Area("Investment")]
+    public class InvestmentApplicationController : Controller
+    {
+        FactoryGenerator objFactoryGenerator = new FactoryGenerator();
+        MasterIL _MasterAL;//= new MasterAL();
+        ILog log = LogManager.GetLogger(typeof(InvestmentApplicationController));
+        IInvestmentApplicationIL objIl;//= new InvestmentApplicationAL();
+        DynamicServiceInvoker ServiceInvoker = new DynamicServiceInvoker(); string webrootpath = string.Empty;
+        string culture = "";
+        public InvestmentApplicationController(IWebHostEnvironment webhost, IHttpContextAccessor httpContextAccessor)
+        {
+            string culture = "";
+            if (HttpContext == null || httpContextAccessor.HttpContext.Session.GetSessionData<string>("culture") == null)
+            {
+                culture = "en-GB";
+            }
+            else
+            {
+                culture = (string)httpContextAccessor.HttpContext.Session.GetSessionData<string>("culture");
+            }
+            Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo(culture);
+            Thread.CurrentThread.CurrentUICulture = Thread.CurrentThread.CurrentCulture;
+            var v = new System.Globalization.DateTimeFormatInfo();
+            v.ShortDatePattern = "dd/MM/yyyy";
+            Thread.CurrentThread.CurrentUICulture.DateTimeFormat = v;
+        }
+        //
+        // GET: /Investment/InvestmentApplication/
+        ////[CustomApproval(Formid = 16001)]
+        [HttpGet]
+        [CustomErrors]
+        [HandleError]
+        [CompressAttribute]
+        //[RequireSsl("app:RequireSsl")]
+        [CheckTermParameters]
+        [Audit]
+        public ActionResult InvestmentApplication(int? formid, string msg, int? msgtype)
+        {
+            InvestmentApllicationDTO objInvestmentApllicationDTO = new InvestmentApllicationDTO();
+            UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            if (usercredentials == null)
+            {
+                return RedirectToAction("Login", "Account", new { area = "" });
+            }
+            // objIl.GlobalUserCredentials = usercredentials;
+            ViewBag.formid = formid;
+            if (msg != "" && msgtype != null)
+            {
+                //ViewData["msg"] = msg;
+                //ViewBag.msgtype = msgtype;
+                TempData["msg"] = msg;
+                TempData["msgtype"] = msgtype;
+                //ProductFavouriteHelper obj = new ProductFavouriteHelper(HttpContext.Session.GetSessionData<IList<ProductForms>>("ProductForms"));
+                //ViewBag.RelatedandFavourite = obj.GetmasterScreenNextandPreviousTasksbyMasterid(formid.Value, 19);
+            }
+            LoadDropDown(usercredentials);
+            ViewBag.LoginDate = usercredentials.Logindatetime.ToString("yyyy-MM-dd");
+            ViewBag.cutOffDt = Convert.ToDateTime(usercredentials.CutOffDate).ToString("yyyy-MM-dd");
+            return View(objInvestmentApllicationDTO);
+        }
+        void LoadDropDown(UserCredentials usercredentials)
+        {
+            IList<InvestTypeMaster> lstInvestTypeMaster = new List<InvestTypeMaster>();
+            //lstInvestTypeMaster = objIl.GetInvestmentMasterList();
+            //lstInvestTypeMaster = (IList<InvestTypeMaster>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetInvestmentMasterList", null, null);
+            object[] objparameters = new object[2];
+            objparameters[0] = usercredentials.PacsId;
+            objparameters[1] = usercredentials.BranchId;
+            Type[] types = new Type[2];
+            types[0] = typeof(Int64);
+            types[1] = typeof(Int32);
+            lstInvestTypeMaster = (IList<InvestTypeMaster>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetInvestmentMasterListWithParameters", types, objparameters);
+            lstInvestTypeMaster.Select(i =>
+            {
+                if (culture != null && culture != "en-GB")
+                {
+                    if (!string.IsNullOrEmpty(i.InvestTypeDescriptionRegional))
+                    {
+                        i.InvestTypeDescription = i.InvestTypeDescriptionRegional;
+                    }
+                    else
+                    {
+                        i.InvestTypeDescription = i.InvestTypeDescription;
+                    }
+                }
+                else
+                {
+                    i.InvestTypeDescription = i.InvestTypeDescription;
+                }
+                return i;
+            }).ToList();
+            ViewBag.ListInvest = new SelectList(lstInvestTypeMaster, "InvestTypeID", "InvestTypeDescription");
+            IList<BankTypeMaster> lstBankTypeMaster = new List<BankTypeMaster>();
+            //lstBankTypeMaster = objIl.GetBankTypeMasterDtls();
+            lstBankTypeMaster = (IList<BankTypeMaster>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetBankTypeMasterDtls", null, null);
+            lstBankTypeMaster.Select(i =>
+            {
+                if (culture != null && culture != "en-GB")
+                {
+                    if (!string.IsNullOrEmpty(i.BankTypeRegionalDescription))
+                    {
+                        i.BankTypeDescription = i.BankTypeRegionalDescription;
+                    }
+                    else
+                    {
+                        i.BankTypeDescription = i.BankTypeDescription;
+                    }
+                }
+                else
+                {
+                    i.BankTypeDescription = i.BankTypeDescription;
+                }
+                return i;
+            }).ToList();
+            ViewBag.ListBankType = new SelectList(lstBankTypeMaster, "BankTypeId", "BankTypeDescription");
+            IList<BankMaster> BankMasterList = new List<BankMaster>();
+            ViewBag.lstBankMaster = new SelectList(BankMasterList, "BankId", "BankName");
+            IList<BankBranchMaster> BankBranchMasterList = new List<BankBranchMaster>();
+            ViewBag.lstBankBranchMaster = new SelectList(BankBranchMasterList, "SlNo", "BranchName");
+            //IList<BankMaster> lstBankMaster = new List<BankMaster>();
+            //lstBankMaster = objIl.GetBankMasterList();
+            //ViewBag.ListBankMaster = new SelectList(lstBankMaster, "InvestTypeID", "InvestTypeDescription");
+            IList<InvestmentDepositType> lstInvestmentDepositType = new List<InvestmentDepositType>();
+            //lstInvestmentDepositType = objIl.GetInvestmentDepositTypeList();
+            lstInvestmentDepositType = (IList<InvestmentDepositType>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetInvestmentDepositTypeList", null, null);
+            lstInvestmentDepositType.Select(i =>
+            {
+                if (culture != null && culture != "en-GB")
+                {
+                    if (!string.IsNullOrEmpty(i.InvestmentDepositTypeRegional))
+                    {
+                        i.InvestmentDepositTypeDescription = i.InvestmentDepositTypeRegional;
+                    }
+                    else
+                    {
+                        i.InvestmentDepositTypeDescription = i.InvestmentDepositTypeDescription;
+                    }
+                }
+                else
+                {
+                    i.InvestmentDepositTypeDescription = i.InvestmentDepositTypeDescription;
+                }
+                return i;
+            }).ToList();
+            ViewBag.ListDepositType = new SelectList(lstInvestmentDepositType, "InvestmentDepositTypeId", "InvestmentDepositTypeDescription");
+            IList<FrequncyTypeMaster> lstFrequncyTypeMaster = new List<FrequncyTypeMaster>();
+            //lstFrequncyTypeMaster = objIl.GetFrequncyTypeMasterList();
+            lstFrequncyTypeMaster = (IList<FrequncyTypeMaster>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetFrequncyTypeMasterList", null, null);
+            lstFrequncyTypeMaster.Select(i =>
+            {
+                if ((culture != null && culture != "en-GB") && culture != "")
+                {
+                    if (i.FrequencyNameRegional != null && !string.IsNullOrEmpty(i.FrequencyNameRegional))
+                    {
+                        i.FrequnecyLName = i.FrequencyNameRegional;
+                    }
+                    else
+                    {
+                        i.FrequnecyLName = i.FrequnecyLName;
+                    }
+                }
+                else
+                {
+                    i.FrequnecyLName = i.FrequnecyLName;
+                }
+                return i;
+            }).ToList();
+            ViewBag.ListFrequencyType = new SelectList(lstFrequncyTypeMaster, "FrequnecyID", "FrequnecyLName");
+        }
+        [HttpPost]
+        ////[CustomApproval(Formid = 16001)]
+        [CustomErrors]
+        [HandleError]
+        [CompressAttribute]
+        [Audit(command = "Save")]
+        public ActionResult InvestmentApplication(InvestmentApllicationDTO objInvestmentApllicationDTO, int? formId)
+        {
+            try
+            {
+                string msg = "";
+                int? msgtype = null;
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                if (usercredentials == null)
+                {
+                    return RedirectToAction("Login", "Account", new { area = "" });
+                }
+                formId = objInvestmentApllicationDTO.TermInvestments.formID;
+                objInvestmentApllicationDTO.TermInvestments.productCode = 34;
+                //string[] saveResult = objIl.SaveInvestment(objInvestmentApllicationDTO, usercredentials);
+                object[] objparameters = new object[2];
+                objparameters[0] = objInvestmentApllicationDTO;
+                objparameters[1] = usercredentials;
+                Type[] types = new Type[2];
+                types[0] = typeof(InvestmentApllicationDTO);
+                types[1] = typeof(UserCredentials);
+                string[] saveResult = (string[])ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "SaveInvestment", types, objparameters);
+                if (saveResult[0] == "True") // True(correct),true(wrong). 
+                {
+                    TempData["msg"] = resCustomerMessages.DataSavedSuccessfully;
+                    TempData["msgtype"] = 1;
+                    msg = resCustomerMessages.DataSavedSuccessfully;
+                    msgtype = 1;
+                    //ProductFavouriteHelper obj = new ProductFavouriteHelper(HttpContext.Session.GetSessionData<IList<ProductForms>>("ProductForms"));
+                    //ViewBag.RelatedandFavourite = obj.GetmasterScreenNextandPreviousTasksbyMasterid(Convert.ToInt32(formId), 19);
+                    ModelState.Clear();
+                }
+                //InvestmentApllicationDTO objinvestApp = new InvestmentApllicationDTO();
+                LoadDropDown(usercredentials);
+                return RedirectToAction("InvestmentApplication", new { formid = formId, msg = msg, msgtype = msgtype });
+            }
+            catch (Exception ex)
+            {
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                log.Error(ex.Message + usercredentials.UserName);
+                ViewData["msg"] = resCustomerMessages.unabletoprocessyourrequest;
+                ViewBag.msgtype = 3;
+                ViewBag.DepositDate = usercredentials.Logindatetime.ToString("yyyy-MM-dd");
+                LoadDropDown(usercredentials);
+                InvestmentApllicationDTO objInvestmentApplicationDetailsDTO = new InvestmentApllicationDTO();
+                return View(objInvestmentApplicationDetailsDTO);
+            }
+        }
+        #region Interest
+        /// <summary>
+        /// Purpose: To get Interest amount
+        /// <Author> Raj  </Author>
+        /// <CreatedDate>19/08/2017</CreatedDate>
+        /// <FunctionName>GetInterestAmount</FunctionName>
+        /// </summary>
+        /// <param name="FrequencyCode"></param>
+        /// <param name="productId"></param>
+        /// <param name="days"></param>
+        /// <param name="months"></param>
+        /// <param name="depositAmount"></param>
+        /// <param name="roi"></param>
+        /// <returns></returns>
+        [CheckLoginUserCredentials]
+        public JsonResult GetInterestAmount(int FrequencyCode, int DepositType, int days, int months, decimal depositAmount, decimal roi, DateTime DepositDate)
+        {
+            try
+            {
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                //objIl.GlobalUserCredentials = usercredentials;
+                decimal InterestAmount = 0.00m;
+                DateTime firstInterestPostingDate = usercredentials.Logindatetime;
+                if (DepositType == 1)
+                {
+                    //InterestAmount = objIl.GetCumulativeIntBasedOnIntType(depositAmount, roi, months, days, 2, true, 0);
+                    object[] objparameters = new object[7];
+                    objparameters[0] = depositAmount;
+                    objparameters[1] = roi;
+                    objparameters[2] = months;
+                    objparameters[3] = days;
+                    objparameters[4] = 2;
+                    objparameters[5] = true;
+                    objparameters[6] = 0;
+                    Type[] types = new Type[7];
+                    types[0] = typeof(Decimal);
+                    types[1] = typeof(Decimal);
+                    types[2] = typeof(Int32);
+                    types[3] = typeof(Int32);
+                    types[4] = typeof(Int32);
+                    types[5] = typeof(Boolean);
+                    types[6] = typeof(Int32);
+                    InterestAmount = (decimal)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetCumulativeIntBasedOnIntType", types, objparameters);
+                }
+                else
+                {
+                    //InterestAmount = objIl.GetNonCummulativeWithInterest(depositAmount, roi, 0, months, days, SetNoOfMonthsValue(FrequencyCode), true);
+                    DateTime Todate = DepositDate.AddMonths(months).AddDays(days);
+                    int TotDays = (Todate - DepositDate).Days;
+                    //months=0;
+                    object[] objparameters = new object[7];
+                    objparameters[0] = depositAmount;
+                    objparameters[1] = roi;
+                    objparameters[2] = 0;
+                    objparameters[3] = 0;
+                    objparameters[4] = TotDays;
+                    objparameters[5] = SetNoOfMonthsValue(FrequencyCode);
+                    objparameters[6] = true;
+                    Type[] types = new Type[7];
+                    types[0] = typeof(Decimal);
+                    types[1] = typeof(Decimal);
+                    types[2] = typeof(Int32);
+                    types[3] = typeof(Int32);
+                    types[4] = typeof(Int32);
+                    types[5] = typeof(Int32);
+                    types[6] = typeof(Boolean);
+                    InterestAmount = (decimal)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetNonCummulativeWithInterest", types, objparameters);
+                }
+                InterestAmount = decimal.Round(InterestAmount);
+                DateTime maturityDate = GetMaturityDate(days, months, DepositDate);
+                var result = new { object1 = InterestAmount, object2 = maturityDate };
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                UserCredentials userCredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                log.Error(ex.Message + userCredentials.UserName);
+                return Json(false);
+            }
+        }
+        public int SetNoOfMonthsValue(int FreqValue)
+        {
+            int MonthsIncrease = 0;
+            if (FreqValue == 6)
+            {
+                MonthsIncrease = 1;
+            }
+            else if (FreqValue == 7)
+            {
+                MonthsIncrease = 3;
+            }
+            else if (FreqValue == 8)
+            {
+                MonthsIncrease = 6;
+            }
+            else if (FreqValue == 9)
+            {
+                MonthsIncrease = 12;
+            }
+            else if (FreqValue == 11)
+            {
+                MonthsIncrease = 99;
+            }
+            return MonthsIncrease;
+        }
+        // method needs to place in Script only. Later needs to change.
+        /// <summary>
+        /// Purpose: To get maturity date
+        /// <Author> Raj  </Author>
+        /// <CreatedDate>21/08/2017</CreatedDate>
+        /// <FunctionName>GetMaturityDate</FunctionName>
+        /// </summary>
+        /// <param name="days"></param>
+        /// <param name="months"></param>
+        /// <param name="depositDate"></param>
+        /// <returns></returns>
+        public DateTime GetMaturityDate(int days, int months, DateTime depositDate)
+        {
+            try
+            {
+                DateTime MaturityDate = depositDate.AddMonths(months).AddDays(days);
+                return MaturityDate;// Json(MaturityDate);
+            }
+            catch (Exception ex)
+            {
+                UserCredentials userCredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                log.Error(ex.Message + userCredentials.UserName);
+                return depositDate;// Json(false);
+            }
+        }
+        [CheckLoginUserCredentials]
+        public JsonResult GetMaturityDateRenewal(int days, int months, DateTime depositDate)
+        {
+            try
+            {
+                DateTime MaturityDate = depositDate.AddMonths(months).AddDays(days);
+                return Json(MaturityDate);
+            }
+            catch (Exception ex)
+            {
+                UserCredentials userCredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                log.Error(ex.Message + userCredentials.UserName);
+                return Json(false);
+            }
+        }
+        [CheckLoginUserCredentials]
+        public JsonResult GetBankDetails(long bankType)
+        {
+            IList<BankMaster> BankMasterList = new List<BankMaster>();
+            //BankMasterList = objIl.GetBankDetailsByBankType(bankType);
+            UserCredentials userCredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            object[] objparameters = new object[3];
+            objparameters[0] = bankType;
+            objparameters[1] = userCredentials.PacsId;
+            objparameters[2] = userCredentials.BranchId;
+            Type[] types = new Type[3];
+            types[0] = typeof(Int64);
+            types[1] = typeof(long);
+            types[2] = typeof(int);
+            BankMasterList = (IList<BankMaster>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetBankDetailsByBankType", types, objparameters);
+            BankMasterList.Select(i =>
+            {
+                if (!(string.IsNullOrEmpty(culture)) && culture != "en-GB")
+                {
+                    if (!string.IsNullOrEmpty(i.BankNameRegional))
+                    {
+                        i.BankName = i.BankNameRegional;
+                    }
+                    else
+                    {
+                        i.BankName = i.BankName;
+                    }
+                }
+                else
+                {
+                    i.BankName = i.BankName;
+                }
+                return i;
+            }).ToList();
+            var result = new { object1 = BankMasterList };
+            return Json(result);
+        }
+        [CheckLoginUserCredentials]
+        public JsonResult GetBankBranchDetails(long bankId)
+        {
+            IList<BankBranchMaster> BankBranchMasterList = new List<BankBranchMaster>();
+            //BankBranchMasterList = objIl.GetBankBranchMasterList(bankId);
+            UserCredentials userCredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            object[] objparameters = new object[3];
+            objparameters[0] = bankId;
+            objparameters[1] = userCredentials.PacsId;
+            objparameters[2] = userCredentials.BranchId;
+            Type[] types = new Type[3];
+            types[0] = typeof(Int64);
+            types[1] = typeof(long);
+            types[2] = typeof(int);
+            BankBranchMasterList = (IList<BankBranchMaster>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetBankBranchMasterList", types, objparameters);
+            BankBranchMasterList.Select(i =>
+            {
+                if (!(string.IsNullOrEmpty(culture)) && culture != "en-GB")
+                {
+                    if (!string.IsNullOrEmpty(i.BranchNameRegional))
+                    {
+                        i.BranchName = i.BranchNameRegional;
+                    }
+                    else
+                    {
+                        i.BranchName = i.BranchName;
+                    }
+                }
+                else
+                {
+                    i.BranchName = i.BranchName;
+                }
+                return i;
+            }).ToList();
+            var result = new { object1 = BankBranchMasterList };
+            return Json(result);
+        }
+        #endregion
+        [CheckLoginUserCredentials]
+        public JsonResult GetInvestTypeMasterId(long investmentTypeId)
+        {
+            //long result = objIl.GetInvestTypeMasterId(investmentTypeId);
+            object[] objparameters = new object[1];
+            objparameters[0] = investmentTypeId;
+            Type[] types = new Type[1];
+            types[0] = typeof(Int64);
+            long result = (Int64)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetInvestTypeMasterId", types, objparameters);
+            return Json(result);
+        }
+        #region Renewal
+        ////[CustomApproval(Formid = 16008)]
+        [CustomErrors]
+        [HandleError]
+        [CompressAttribute]
+        [Audit]
+        public ActionResult InvestmentRenewal(int? formid, string msg, int? msgtype)
+        {
+            UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            InvestmentApllicationDTO objInvest = new InvestmentApllicationDTO();
+            FillDropDownsForInvRenewal(usercredentials);
+            objInvest.TermInvestments = new TermTranscationDTO();
+            objInvest.TermInvestments.LoginDate = usercredentials.Logindatetime;
+            return View(objInvest);
+        }
+        void FillDropDownsForInvRenewal(UserCredentials usercredentials)
+        {
+            IList<InvestTypeMaster> lstInvestTypeMaster = new List<InvestTypeMaster>();
+            //lstInvestTypeMaster = objIl.GetInvestmentMasterList();
+            //lstInvestTypeMaster = (IList<InvestTypeMaster>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetInvestmentMasterList", null, null);
+            object[] objparameters = new object[2];
+            objparameters[0] = usercredentials.PacsId;
+            objparameters[1] = usercredentials.BranchId;
+            Type[] types = new Type[2];
+            types[0] = typeof(long);
+            types[1] = typeof(int);
+            lstInvestTypeMaster = (IList<InvestTypeMaster>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetInvestmentMasterListWithParameters", types, objparameters);
+            lstInvestTypeMaster = lstInvestTypeMaster
+                                                .Where(item => item.TypeOfInvest != 3)
+                                                .OrderBy(item => item.InvestTypeDescription)
+                                                .ToList();
+
+            lstInvestTypeMaster.Select(i =>
+            {
+                if (culture != null && culture != "en-GB")
+                {
+                    if (!string.IsNullOrEmpty(i.InvestTypeDescriptionRegional))
+                    {
+                        i.InvestTypeDescription = i.InvestTypeDescriptionRegional;
+                    }
+                    else
+                    {
+                        i.InvestTypeDescription = i.InvestTypeDescription;
+                    }
+                }
+                else
+                {
+                    i.InvestTypeDescription = i.InvestTypeDescription;
+                }
+                return i;
+            }).ToList();
+            ViewBag.lstInvestType = new SelectList(lstInvestTypeMaster, "InvestTypeID", "InvestTypeDescription");
+            IList<BankTypeMaster> lstBankTypeMaster = new List<BankTypeMaster>();
+            //lstBankTypeMaster = objIl.GetBankTypeMasterDtls();
+            lstBankTypeMaster = (IList<BankTypeMaster>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetBankTypeMasterDtls", null, null);
+            lstBankTypeMaster.Select(i =>
+            {
+                if (culture != null && culture != "en-GB")
+                {
+                    if (!string.IsNullOrEmpty(i.BankTypeRegionalDescription))
+                    {
+                        i.BankTypeDescription = i.BankTypeRegionalDescription;
+                    }
+                    else
+                    {
+                        i.BankTypeDescription = i.BankTypeDescription;
+                    }
+                }
+                else
+                {
+                    i.BankTypeDescription = i.BankTypeDescription;
+                }
+                return i;
+            }).ToList();
+            ViewBag.ListBankType = new SelectList(lstBankTypeMaster, "BankTypeId", "BankTypeDescription");
+            IList<BankMaster> BankMasterList = new List<BankMaster>();
+            ViewBag.lstBankMaster = new SelectList(BankMasterList, "BankId", "BankName");
+            IList<BankBranchMaster> BankBranchMasterList = new List<BankBranchMaster>();
+            ViewBag.lstBankBranchMaster = new SelectList(BankBranchMasterList, "SlNo", "BranchName");
+            List<string> InvestList = new List<string>();
+            ViewBag.lstAccountNo = new SelectList(InvestList, "", "");
+            //IList<FrequncyTypeMaster> listFrequncyTypeMaster = objIL.GetFrequncyTypeMaster();
+            //ViewBag.FrequncyTypeMasterList = new SelectList(listFrequncyTypeMaster, "FrequnecyID", "FrequnecyLName");
+        }
+        [CheckLoginUserCredentials]
+        public JsonResult GetRenewalInvestmentAccounts(long bankType, long bank, long bankBranch, long investmentType)
+        {
+            IList<string> lstInvestAccNo = new List<string>();
+            UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            //lstInvestAccNo = objIl.GetRenewalInvestmentAccounts(bankType, bank, bankBranch, investmentType, usercredentials.Logindatetime, usercredentials.PacsId, usercredentials.BranchId);
+            object[] objparameters = new object[7];
+            objparameters[0] = bankType;
+            objparameters[1] = bank;
+            objparameters[2] = bankBranch;
+            objparameters[3] = investmentType;
+            objparameters[4] = usercredentials.Logindatetime;
+            objparameters[5] = usercredentials.PacsId;
+            objparameters[6] = usercredentials.BranchId;
+            Type[] types = new Type[7];
+            types[0] = typeof(Int64);
+            types[1] = typeof(Int64);
+            types[2] = typeof(Int64);
+            types[3] = typeof(Int64);
+            types[4] = typeof(DateTime);
+            types[5] = typeof(long);
+            types[6] = typeof(int);
+            lstInvestAccNo = (IList<string>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetRenewalInvestmentAccounts", types, objparameters);
+            var result = new { object1 = lstInvestAccNo };
+            return Json(result);
+        }
+        [CheckLoginUserCredentials]
+        public JsonResult GetAccountDetails(string AccountNo)
+        {
+            try
+            {
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                InvestmentApplicationDetailsMain main = new InvestmentApplicationDetailsMain();
+                //main = objIl.GetRenewalAccountDetails(AccountNo, usercredentials.PacsId, usercredentials.BranchId);
+                object[] objparameters = new object[3];
+                objparameters[0] = AccountNo;
+                objparameters[1] = usercredentials.PacsId;
+                objparameters[2] = usercredentials.BranchId;
+                Type[] types = new Type[3];
+                types[0] = typeof(String);
+                types[1] = typeof(long);
+                types[2] = typeof(int);
+                main = (InvestmentApplicationDetailsMain)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetRenewalAccountDetails", types, objparameters);
+                InvestmentApplicationDetails objInvDetails = new InvestmentApplicationDetails();
+                if (main != null)
+                {
+                    objInvDetails = main.InvestmentApplicationDetails.LastOrDefault();
+                    if (objInvDetails.MaturityDate > usercredentials.Logindatetime)
+                    {
+                        objInvDetails = new InvestmentApplicationDetails();
+                        return Json(objInvDetails);
+                    }
+                }
+                var result = new { object1 = main, object2 = objInvDetails };
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                UserCredentials userCredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                log.Error(ex.Message + userCredentials.UserName);
+                return Json(false);
+            }
+        }
+        [CustomErrors]
+        [HandleError]
+        [CompressAttribute]
+        [Audit(command = "Save")]
+        [HttpPost]
+        public ActionResult InvestmentRenewal(InvestmentApllicationDTO objInvestmentApllicationDTO, int? formId)
+        {
+            try
+            {
+                string msg = "";
+                int? msgtype = null;
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                // objIl.GlobalUserCredentials = usercredentials;
+                formId = objInvestmentApllicationDTO.TermInvestments.formID;
+                objInvestmentApllicationDTO.TermInvestments.productCode = 34;
+                //string[] saveResult = objIl.RenewalInvestmentApplication(objInvestmentApllicationDTO, UserCredentials);
+                object[] objparameters = new object[2];
+                objparameters[0] = objInvestmentApllicationDTO;
+                objparameters[1] = usercredentials;               
+                Type[] types = new Type[2];
+                types[0] = typeof(InvestmentApllicationDTO);
+                types[1] = typeof(UserCredentials);             
+                string[] saveResult = (string[])ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "RenewalInvestmentApplication", types, objparameters);
+                if (saveResult[0] == "True") // True(correct),true(wrong). 
+                {
+                    TempData["msg"] = resCustomerMessages.DataSavedSuccessfully;
+                    TempData["msgtype"] = 1;
+                    ModelState.Clear();
+                }
+                InvestmentApllicationDTO objinvestApp = new InvestmentApllicationDTO();
+                LoadDropDown(usercredentials);
+                return RedirectToAction("InvestmentRenewal", new { formid = formId, msg = msg, msgtype = msgtype });
+            }
+            catch (Exception ex)
+            {
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                log.Error(ex.Message + usercredentials.UserName);
+                ViewData["msg"] = resCustomerMessages.unabletoprocessyourrequest;
+                ViewBag.msgtype = 3;
+                ViewBag.DepositDate = usercredentials.Logindatetime.ToString("yyyy-MM-dd");
+                LoadDropDown(usercredentials);
+                InvestmentApllicationDTO objInvestmentApplicationDetailsDTO = new InvestmentApllicationDTO();
+                return View(objInvestmentApplicationDetailsDTO);
+            }
+        }
+        #endregion
+        [CheckLoginUserCredentials]
+        public JsonResult CheckRefNoExists(string InvRefNo, long investTypeId)
+        {
+            try
+            {
+                UserCredentials userCredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                object[] objprmisDepositExists = new object[4];
+                objprmisDepositExists[0] = investTypeId;
+                objprmisDepositExists[1] = InvRefNo;
+                objprmisDepositExists[2] = userCredentials.PacsId;
+                objprmisDepositExists[3] = userCredentials.BranchId;
+                Type[] typeisDepositExists = new Type[4];
+                typeisDepositExists[0] = typeof(Int64);
+                typeisDepositExists[1] = typeof(String);
+                typeisDepositExists[2] = typeof(Int64);
+                typeisDepositExists[3] = typeof(Int32);
+                bool AccountExists = (bool)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "isInvestmentRefNoExists", typeisDepositExists, objprmisDepositExists);
+                return Json(AccountExists);
+            }
+            catch (Exception ex)
+            {
+                UserCredentials userCredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                log.Error(ex.Message + userCredentials.UserName);
+                return Json(false);
+            }
+        }
+
+        [CheckLoginUserCredentials]
+        public JsonResult isInvestmentShareAllottedNoExists(string InvRefNo, long investTypeId)
+        {
+            try
+            {
+                UserCredentials userCredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                object[] objprmisDepositExists = new object[4];
+                objprmisDepositExists[0] = investTypeId;
+                objprmisDepositExists[1] = InvRefNo;
+                objprmisDepositExists[2] = userCredentials.PacsId;
+                objprmisDepositExists[3] = userCredentials.BranchId;
+                Type[] typeisDepositExists = new Type[4];
+                typeisDepositExists[0] = typeof(Int64);
+                typeisDepositExists[1] = typeof(String);
+                typeisDepositExists[2] = typeof(Int64);
+                typeisDepositExists[3] = typeof(Int32);
+                bool AccountExists = (bool)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "isInvestmentShareAllottedNoExists", typeisDepositExists, objprmisDepositExists);
+                return Json(AccountExists);
+            }
+            catch (Exception ex)
+            {
+                UserCredentials userCredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                log.Error(ex.Message + userCredentials.UserName);
+                return Json(false);
+            }
+        }
+
+        #region
+        ////[CustomApproval(Formid = 16009)]
+        [HttpGet]
+        [CustomErrors]
+        [HandleError]
+        [CompressAttribute]
+        [RequireSsl("app:RequireSsl")]
+        [CheckTermParameters]
+        [Audit]
+        public ActionResult InvestmentApplicationBackDate(int? formid, string msg, int? msgtype)
+        {
+            InvestmentApllicationDTO objInvestmentApllicationDTO = new InvestmentApllicationDTO();
+            UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            // objIl.GlobalUserCredentials = usercredentials;
+            ViewBag.formid = formid;
+            if (msg != "" && msgtype != null)
+            {
+                //ViewData["msg"] = msg;
+                //ViewBag.msgtype = msgtype;
+                TempData["msg"] = msg;
+                TempData["msgtype"] = msgtype;
+                //ProductFavouriteHelper obj = new ProductFavouriteHelper(HttpContext.Session.GetSessionData<IList<ProductForms>>("ProductForms"));
+                //ViewBag.RelatedandFavourite = obj.GetTranscationScreenNextandPreviousTasksbyformid(formid.Value, 19);
+            }
+            LoadDropDown(usercredentials);
+            ViewBag.LoginDate = usercredentials.Logindatetime.ToString("yyyy-MM-dd");
+            DateTime cutOffDate = usercredentials.CutOffDate.Value;
+            if (usercredentials.Logindatetime > cutOffDate)
+            {
+                TempData["msg"] = "Login date should be less than cut off date";
+                TempData["msgtype"] = 1;
+                objInvestmentApllicationDTO = new InvestmentApllicationDTO();
+                IList<InvestTypeMaster> lstInvestTypeMaster = new List<InvestTypeMaster>();
+                ViewBag.ListInvest = new SelectList(lstInvestTypeMaster, "", "");
+                IList<BankTypeMaster> lstBankTypeMaster = new List<BankTypeMaster>();
+                ViewBag.ListBankType = new SelectList(lstBankTypeMaster, "", "");
+            }
+            return View(objInvestmentApllicationDTO);
+        }
+        [HttpPost]
+        ////[CustomApproval(Formid = 16009)]
+        [CustomErrors]
+        [HandleError]
+        [CompressAttribute]
+        [Audit(command = "Save")]
+        public ActionResult InvestmentApplicationBackDate(InvestmentApllicationDTO objInvestmentApllicationDTO, int? formId)
+        {
+            try
+            {
+                string msg = "";
+                int? msgtype = null;
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                //objIl.GlobalUserCredentials = usercredentials;
+                formId = objInvestmentApllicationDTO.TermInvestments.formID;
+                objInvestmentApllicationDTO.TermInvestments.productCode = 34;
+                //string[] saveResult = objIl.SaveInvestment(objInvestmentApllicationDTO, usercredentials);
+                object[] objparameters = new object[3];
+                objparameters[0] = objInvestmentApllicationDTO;
+                objparameters[1] = usercredentials;
+                objparameters[2] = true;
+                Type[] types = new Type[3];
+                types[0] = typeof(InvestmentApllicationDTO);
+                types[1] = typeof(UserCredentials);
+                types[2] = typeof(bool);
+                string[] saveResult = (string[])ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "SaveInvestmentBackDate", types, objparameters);
+                if (saveResult[0] == "True") // True(correct),true(wrong). 
+                {
+                    TempData["msg"] = resCustomerMessages.DataSavedSuccessfully;
+                    TempData["msgtype"] = 1;
+                    msg = resCustomerMessages.DataSavedSuccessfully;
+                    msgtype = 1;
+                    //ProductFavouriteHelper obj = new ProductFavouriteHelper(HttpContext.Session.GetSessionData<IList<ProductForms>>("ProductForms"));
+                    //ViewBag.RelatedandFavourite = obj.GetTranscationScreenNextandPreviousTasksbyformid(Convert.ToInt32(formId), 19, "0");
+                    ModelState.Clear();
+                }
+                //InvestmentApllicationDTO objinvestApp = new InvestmentApllicationDTO();
+                LoadDropDown(usercredentials);
+                return RedirectToAction("InvestmentApplicationBackDate", new { formid = formId, msg = msg, msgtype = msgtype });
+            }
+            catch (Exception ex)
+            {
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                log.Error(ex.Message + usercredentials.UserName);
+                ViewData["msg"] = resCustomerMessages.unabletoprocessyourrequest;
+                ViewBag.msgtype = 3;
+                ViewBag.DepositDate = usercredentials.Logindatetime.ToString("yyyy-MM-dd");
+                LoadDropDown(usercredentials);
+                InvestmentApllicationDTO objInvestmentApplicationDetailsDTO = new InvestmentApllicationDTO();
+                return View(objInvestmentApplicationDetailsDTO);
+            }
+        }
+        #endregion
+
+        #region InvestmentApplication Modification
+        [HttpGet]
+        [CustomErrors]
+        [HandleError]
+        [CompressAttribute]
+        //[RequireSsl("app:RequireSsl")]
+        [CheckTermParameters]
+        [Audit]
+        public ActionResult InvestmentApplicationModify(int? formid, string msg, int? msgtype)
+        {
+            InvestmentApllicationDTO objInvestmentApllicationDTO = new InvestmentApllicationDTO();
+            UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            if (usercredentials == null)
+            {
+                return RedirectToAction("Login", "Account", new { area = "" });
+            }
+            // objIl.GlobalUserCredentials = usercredentials;
+            ViewBag.formid = formid;
+            if (msg != "" && msgtype != null)
+            {
+                //ViewData["msg"] = msg;
+                //ViewBag.msgtype = msgtype;
+                TempData["msg"] = msg;
+                TempData["msgtype"] = msgtype;
+                //ProductFavouriteHelper obj = new ProductFavouriteHelper(HttpContext.Session.GetSessionData<IList<ProductForms>>("ProductForms"));
+                //ViewBag.RelatedandFavourite = obj.GetmasterScreenNextandPreviousTasksbyMasterid(formid.Value, 19);
+            }
+            LoadDropDown(usercredentials);
+            List<string> InvestList = new List<string>();
+            ViewBag.lstAccountNo = new SelectList(InvestList, "", "");
+            ViewBag.LoginDate = usercredentials.Logindatetime.ToString("yyyy-MM-dd");
+            ViewBag.CutoffDate =Convert.ToDateTime(usercredentials.CutOffDate).ToString("yyyy-MM-dd");
+            return View(objInvestmentApllicationDTO);
+        }
+
+        [CheckLoginUserCredentials]
+        public JsonResult GetInvestmentAccountsForModification(long investmentType)
+        {
+            IList<string> lstInvestAccNo = new List<string>();
+            UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            object[] objparameters = new object[4];           
+            objparameters[0] = investmentType;
+            objparameters[1] = usercredentials.CutOffDate;
+            objparameters[2] = usercredentials.PacsId;
+            objparameters[3] = usercredentials.BranchId;
+            Type[] types = new Type[4];
+            types[0] = typeof(Int64);
+            types[1] = typeof(DateTime);
+            types[2] = typeof(long);
+            types[3] = typeof(int);
+            lstInvestAccNo = (IList<string>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetInvestmentAccountsForModify", types, objparameters);
+            var result = new { object1 = lstInvestAccNo };
+            return Json(result);
+        }
+
+        [CustomErrors]
+        [HandleError]
+        [CompressAttribute]
+        [Audit(command = "Save")]
+        [HttpPost]
+        public ActionResult InvestmentApplicationModify(InvestmentApllicationDTO objInvestmentApllicationDTO, int? formId, string command)
+        {
+            try
+            {
+                string msg = "";
+                int? msgtype = null;
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                if (usercredentials == null)
+                {
+                    return RedirectToAction("Login", "Account", new { area = "" });
+                }
+                bool IsDelete = false;
+                if (command == "Delete")
+                    IsDelete = true;
+                formId = objInvestmentApllicationDTO.TermInvestments.formID;
+                objInvestmentApllicationDTO.TermInvestments.productCode = 34;
+                //string[] saveResult = objIl.SaveInvestment(objInvestmentApllicationDTO, usercredentials);
+                object[] objparameters = new object[3];
+                objparameters[0] = objInvestmentApllicationDTO;
+                objparameters[1] = usercredentials;
+                objparameters[2] = IsDelete;
+                Type[] types = new Type[3];
+                types[0] = typeof(InvestmentApllicationDTO);
+                types[1] = typeof(UserCredentials);
+                types[2] = typeof(bool);
+                string[] saveResult = (string[])ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "ModifyInvestment", types, objparameters);
+                if (saveResult[0] == "True") // True(correct),true(wrong). 
+                {
+                    TempData["msg"] = resCustomerMessages.DataModifiedSuccessfully;
+                    TempData["msgtype"] = 1;
+                    msg = resCustomerMessages.DataModifiedSuccessfully;
+                    msgtype = 1;
+                    //ProductFavouriteHelper obj = new ProductFavouriteHelper(HttpContext.Session.GetSessionData<IList<ProductForms>>("ProductForms"));
+                    //ViewBag.RelatedandFavourite = obj.GetmasterScreenNextandPreviousTasksbyMasterid(Convert.ToInt32(formId), 19);
+                    ModelState.Clear();
+                }
+                //InvestmentApllicationDTO objinvestApp = new InvestmentApllicationDTO();
+                LoadDropDown(usercredentials);
+                return RedirectToAction("InvestmentApplicationModify", new { formid = formId, msg = msg, msgtype = msgtype });
+            }
+            catch (Exception ex)
+            {
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                log.Error(ex.Message + usercredentials.UserName);
+                ViewData["msg"] = resCustomerMessages.unabletoprocessyourrequest;
+                ViewBag.msgtype = 3;
+                ViewBag.DepositDate = usercredentials.Logindatetime.ToString("yyyy-MM-dd");
+                LoadDropDown(usercredentials);
+                InvestmentApllicationDTO objInvestmentApplicationDetailsDTO = new InvestmentApllicationDTO();
+                return View(objInvestmentApplicationDetailsDTO);
+            }
+        }
+
+        [CheckLoginUserCredentials]
+        public JsonResult GetAccountDetailsForModify(string AccountNo)
+        {
+            try
+            {
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                InvestmentApplicationDetailsMain main = new InvestmentApplicationDetailsMain();
+                decimal obInterestamt = 0.00m;
+                //main = objIl.GetRenewalAccountDetails(AccountNo, usercredentials.PacsId, usercredentials.BranchId);
+                object[] objparameters = new object[3];
+                objparameters[0] = AccountNo;
+                objparameters[1] = usercredentials.PacsId;
+                objparameters[2] = usercredentials.BranchId;
+                Type[] types = new Type[3];
+                types[0] = typeof(String);
+                types[1] = typeof(long);
+                types[2] = typeof(int);
+                main = (InvestmentApplicationDetailsMain)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "GetRenewalAccountDetails", types, objparameters);
+                InvestmentApplicationDetails objInvDetails = new InvestmentApplicationDetails();
+                if (main != null)
+                {
+                    objInvDetails = main.InvestmentApplicationDetails.LastOrDefault();
+                    //if (objInvDetails.InvestedDate >= usercredentials.CutOffDate)
+                    //{
+                    //    objInvDetails = new InvestmentApplicationDetails();
+                    //    return Json(objInvDetails);
+                    //}
+                    //
+
+                    object[] objparametersObInt = new object[4];
+                    objparametersObInt[0] = main.AccountNo;
+                    objparametersObInt[1] = usercredentials.CutOffDate;
+                    objparametersObInt[2] = usercredentials.PacsId;
+                    objparametersObInt[3] = usercredentials.BranchId;
+                    Type[] typesObInt = new Type[4];
+                    typesObInt[0] = typeof(string);
+                    typesObInt[1] = typeof(DateTime);
+                    typesObInt[2] = typeof(long);
+                    typesObInt[3] = typeof(int);
+                    obInterestamt = (decimal)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objIl, "getOBInterestAmount", typesObInt, objparametersObInt);
+                   
+                }
+                var result = new { object1 = main, object2 = objInvDetails,object3 = obInterestamt };
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                UserCredentials userCredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                log.Error(ex.Message + userCredentials.UserName);
+                return Json(false);
+            }
+        }
+        #endregion 
+    }
+}

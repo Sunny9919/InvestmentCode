@@ -1,0 +1,440 @@
+using log4net;using System.Text;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using UniteERPAPIServices;
+using System.Net.Http;
+using Newtonsoft.Json;
+using Intellect.Unite.WebPackages.Investment.Model;
+using Intellect.Unite.WebPackages.Mdm.Model;
+using Intellect.Unite.WebPackages.Investment.DTO;
+using Intellect.Unite.WebPackages.UserManagement.Model;
+using Intellect.Unite.WebPackages.FAS.Model.DTO;
+
+namespace ERPClient.Services
+{
+    public class IInvestmentApplicationIL
+    {
+        string webapiurl = string.Empty;
+        ILog _log = LogManager.GetLogger(typeof(IInvestmentApplicationIL));
+        GenericServices service = new GenericServices();
+        public IInvestmentApplicationIL(string _apiurl)
+        {
+            webapiurl = _apiurl;
+        }
+
+
+        //[Route("GetInvestmentMasterList")]
+        public IList<InvestTypeMaster> GetInvestmentMasterList()
+        {
+            _log.Debug(" Entered in GetInvestmentMasterList ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetInvestmentMasterList";
+            var result = service.GetListObjectResult<InvestTypeMaster>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetInvestmentDepositTypeList")]
+        public IList<InvestmentDepositType> GetInvestmentDepositTypeList()
+        {
+            _log.Debug(" Entered in GetInvestmentDepositTypeList ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetInvestmentDepositTypeList";
+            var result = service.GetListObjectResult<InvestmentDepositType>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetFrequncyTypeMasterList")]
+        public IList<FrequncyTypeMaster> GetFrequncyTypeMasterList()
+        {
+            _log.Debug(" Entered in GetFrequncyTypeMasterList ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetFrequncyTypeMasterList";
+            var result = service.GetListObjectResult<FrequncyTypeMaster>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetAccountCodeByTempAcc/{TempAccNo}/{productCode}/{pacId}/{branchId}")]
+        public string GetAccountCodeByTempAcc(string TempAccNo, int productCode, long pacId, int branchId)
+        {
+            _log.Debug(" Entered in GetAccountCodeByTempAcc ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetAccountCodeByTempAcc" + "/" + TempAccNo + "/" + productCode + "/" + pacId + "/" + branchId;
+            var result = service.GetScalarObjectResult<string>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("SaveInvestment")]
+        public String[] SaveInvestment(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials)
+        {
+            _log.Debug(" Entered in SaveInvestment ");
+            GenericModels.GenericArgumentsModel<InvestmentApllicationDTO, UserCredentials> genericreportmodel = new GenericModels.GenericArgumentsModel<InvestmentApllicationDTO, UserCredentials>();
+            genericreportmodel.ClassObject_1 = objInvestmentApllicationDTO;
+            genericreportmodel.ClassObject_2 = usercredentials;
+
+            var jsonresult = JsonConvert.SerializeObject(genericreportmodel);
+            StringContent content = new StringContent(jsonresult, Encoding.UTF8, "application/json");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/SaveInvestment";
+            var result = service.GetScalarObjectResultWithContent<String[]>(webapiurl, content);
+            return result.Result;
+        }
+
+
+        //[Route("GetNonCummulativeWithInterest/{Principal}/{ROI}/{NoOfYears}/{NoOfMonths}/{NoOfDays}/{LintDuration}/{isRounding}")]
+        public decimal GetNonCummulativeWithInterest(decimal Principal, decimal ROI, int NoOfYears, int NoOfMonths, int NoOfDays, int LintDuration, bool isRounding)
+        {
+            _log.Debug(" Entered in GetNonCummulativeWithInterest ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetNonCummulativeWithInterest" + "/" + Principal + "/" + ROI + "/" + NoOfYears + "/" + NoOfMonths + "/" + NoOfDays + "/" + LintDuration + "/" + isRounding;
+            var result = service.GetScalarObjectResult<decimal>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetCumulativeIntBasedOnIntType/{Principal}/{ROI}/{NoOfMonths}/{NoOfDays}/{InterestType}/{isRounding}/{InterestCalculationFrequency}")]
+        public decimal GetCumulativeIntBasedOnIntType(decimal Principal, decimal ROI, int NoOfMonths, int NoOfDays, int InterestType, bool isRounding, int InterestCalculationFrequency)
+        {
+            _log.Debug(" Entered in GetCumulativeIntBasedOnIntType ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetCumulativeIntBasedOnIntType" + "/" + Principal + "/" + ROI + "/" + NoOfMonths + "/" + NoOfDays + "/" + InterestType + "/" + isRounding + "/" + InterestCalculationFrequency;
+            var result = service.GetScalarObjectResult<decimal>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetInvestTypeMasterHavingAccounts")]
+        public IList<InvestTypeMaster> GetInvestTypeMasterHavingAccounts()
+        {
+            _log.Debug(" Entered in GetInvestTypeMasterHavingAccounts ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetInvestTypeMasterHavingAccounts";
+            var result = service.GetListObjectResult<InvestTypeMaster>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetAccountCodePkey/{accountCode}/{pacid}/{brachid}")]
+        public long GetAccountCodePkey(string accountCode, long  pacid, int brachid)
+        {
+            _log.Debug(" Entered in GetAccountCodePkey ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetAccountCodePkey" + "/" + accountCode + "/" + pacid + "/" + brachid;
+            var result = service.GetScalarObjectResult<long>(webapiurl);
+            return result.Result;
+        }
+        public long GetAccountCodePkey(FormBodyDTO objFormBodyDTO)
+        {
+            _log.Debug(" Entered in GetAccountCodePkey ");
+            var jsonresult = JsonConvert.SerializeObject(objFormBodyDTO);
+            StringContent content = new StringContent(jsonresult, Encoding.UTF8, "application/json");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetAccountCodePkey";
+            var result = service.GetScalarObjectResultWithContent<long>(webapiurl,content);
+            return result.Result;
+        }
+
+
+        //[Route("GetBankTypeMasterDtls")]
+        public IList<BankTypeMaster> GetBankTypeMasterDtls()
+        {
+            _log.Debug(" Entered in GetBankTypeMasterDtls ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetBankTypeMasterDtls";
+            var result = service.GetListObjectResult<BankTypeMaster>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetBankDetailsByBankType/{bankType}/{Pacid}/{branchid}")]
+        public IList<BankMaster> GetBankDetailsByBankType(long bankType, long Pacid, int branchid)
+        {
+            _log.Debug(" Entered in GetBankDetailsByBankType ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetBankDetailsByBankType" + "/" + bankType + "/" + Pacid + "/" + branchid;
+            var result = service.GetListObjectResult<BankMaster>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetBankMasterList")]
+        public IList<BankMaster> GetBankMasterList()
+        {
+            _log.Debug(" Entered in GetBankMasterList ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetBankMasterList";
+            var result = service.GetListObjectResult<BankMaster>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetBankBranchMasterList/{bankId}/{Pacid}/{branchid}")]
+        public IList<BankBranchMaster> GetBankBranchMasterList(long bankId, long Pacid, int branchid)
+        {
+            _log.Debug(" Entered in GetBankBranchMasterList ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetBankBranchMasterList" + "/" + bankId + "/" + Pacid + "/" + branchid;
+            var result = service.GetListObjectResult<BankBranchMaster>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetInvestmentAccounts/{bankType}/{bank}/{bankBranch}/{InvestmentType}/{pacId}/{branchId}")]
+        public IList<String> GetInvestmentAccounts(long bankType, long bank, long bankBranch, long InvestmentType, long pacId, int branchId, DateTime LoginDate)
+        {
+            _log.Debug(" Entered in GetInvestmentAccounts ");
+            var date = LoginDate.ToString("yyyy-MM-dd HH:mm:ss");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetInvestmentAccounts" + "/" + bankType + "/" + bank + "/" + bankBranch + "/" + InvestmentType + "/" + pacId + "/" + branchId + "/" + date;
+            var result = service.GetListObjectResult<String>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetInvestmentAccountsForNonCumInvestPay/{bankType}/{bank}/{bankBranch}/{InvestmentType}/{pacId}/{branchId}")]
+        public IList<String> GetInvestmentAccountsForNonCumInvestPay(long bankType, long bank, long bankBranch, long InvestmentType, long pacId, int branchId)
+        {
+            _log.Debug(" Entered in GetInvestmentAccountsForNonCumInvestPay ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetInvestmentAccountsForNonCumInvestPay" + "/" + bankType + "/" + bank + "/" + bankBranch + "/" + InvestmentType + "/" + pacId + "/" + branchId;
+            var result = service.GetListObjectResult<String>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetInvestmentAccountsForeclosure/{bankType}/{bank}/{bankBranch}/{InvestmentType}/{LoginDate}/{pacId}/{branchId}")]
+        public Tuple<IList<String>, String> GetInvestmentAccountsForeclosure(long bankType, long bank, long bankBranch, long InvestmentType, DateTime LoginDate, long pacId, int branchId)
+        {
+            _log.Debug(" Entered in GetInvestmentAccountsForeclosure ");
+            var date = LoginDate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetInvestmentAccountsForeclosure" + "/" + bankType + "/" + bank + "/" + bankBranch + "/" + InvestmentType + "/" + date + "/" + pacId + "/" + branchId;
+            var result = service.GetScalarObjectResult<Tuple<IList<String>, String>>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetInvestmentAccountsClosure/{bankType}/{bank}/{bankBranch}/{InvestmentType}/{LoginDate}/{pacId}/{branchId}")]
+        public IList<String> GetInvestmentAccountsClosure(long bankType, long bank, long bankBranch, long InvestmentType, DateTime LoginDate, long pacId, int branchId)
+        {
+            _log.Debug(" Entered in GetInvestmentAccountsClosure ");
+            var date = LoginDate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetInvestmentAccountsClosure" + "/" + bankType + "/" + bank + "/" + bankBranch + "/" + InvestmentType + "/" + date + "/" + pacId + "/" + branchId;
+            var result = service.GetListObjectResult<String>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetInvestmentShareAccounts/{bankType}/{bank}/{bankBranch}/{InvestmentType}/{pacId}/{branchId}")]
+        public IList<String> GetInvestmentShareAccounts(long bankType, long bank, long bankBranch, long InvestmentType, long pacId, int branchId, DateTime LoginDate)
+        {
+            _log.Debug(" Entered in GetInvestmentShareAccounts ");
+            var date = LoginDate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetInvestmentShareAccounts" + "/" + bankType + "/" + bank + "/" + bankBranch + "/" + InvestmentType + "/" + pacId + "/" + branchId + "/" + date;
+            var result = service.GetListObjectResult<String>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetRenewalInvestmentAccounts/{bankType}/{bank}/{bankBranch}/{InvestmentType}/{LoginDate}/{pacId}/{branchId}")]
+        public IList<String> GetRenewalInvestmentAccounts(long bankType, long bank, long bankBranch, long InvestmentType, DateTime LoginDate, long pacId, int branchId)
+        {
+            _log.Debug(" Entered in GetRenewalInvestmentAccounts ");
+            var date = LoginDate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetRenewalInvestmentAccounts" + "/" + bankType + "/" + bank + "/" + bankBranch + "/" + InvestmentType + "/" + date + "/" + pacId + "/" + branchId;
+            var result = service.GetListObjectResult<String>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetRenewalAccountDetails/{accountNo}/{pacId}/{branchId}")]
+        public InvestmentApplicationDetailsMain GetRenewalAccountDetails(string accountNo, long pacId, int branchId)
+        {
+            _log.Debug(" Entered in GetRenewalAccountDetails ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetRenewalAccountDetails" + "/" + accountNo + "/" + pacId + "/" + branchId;
+            var result = service.GetScalarObjectResult<InvestmentApplicationDetailsMain>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("RenewalInvestmentApplication")]
+        public String[] RenewalInvestmentApplication(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials)
+        {
+            _log.Debug(" Entered in RenewalInvestmentApplication ");
+            GenericModels.GenericArgumentsModel<InvestmentApllicationDTO, UserCredentials> genericreportmodel = new GenericModels.GenericArgumentsModel<InvestmentApllicationDTO, UserCredentials>();
+            genericreportmodel.ClassObject_1 = objInvestmentApllicationDTO;
+            genericreportmodel.ClassObject_2 = usercredentials;
+
+            var jsonresult = JsonConvert.SerializeObject(genericreportmodel);
+            StringContent content = new StringContent(jsonresult, Encoding.UTF8, "application/json");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/RenewalInvestmentApplication";
+            var result = service.GetScalarObjectResultWithContent<String[]>(webapiurl, content);
+            return result.Result;
+        }
+
+
+        //[Route("GetTermInvestmentMasterList")]
+        public IList<InvestTypeMaster> GetTermInvestmentMasterList()
+        {
+            _log.Debug(" Entered in GetTermInvestmentMasterList ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetTermInvestmentMasterList";
+            var result = service.GetListObjectResult<InvestTypeMaster>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetInvestTypeMasterId/{investmentTypeId}")]
+        public long GetInvestTypeMasterId(long investmentTypeId)
+        {
+            _log.Debug(" Entered in GetInvestTypeMasterId ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetInvestTypeMasterId" + "/" + investmentTypeId;
+            var result = service.GetScalarObjectResult<long>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetInvestmentProduct")]
+        public ProductMaster GetInvestmentProduct()
+        {
+            _log.Debug(" Entered in GetInvestmentProduct ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetInvestmentProduct";
+            var result = service.GetScalarObjectResult<ProductMaster>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("isInvestmentRefNoExists/{investTypeId}/{RefNo}/{pacId}/{branchId}")]
+        public bool isInvestmentRefNoExists(long investTypeId, string RefNo, long pacId, int branchId)
+        {
+            _log.Debug(" Entered in isInvestmentRefNoExists ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/isInvestmentRefNoExists" + "/" + investTypeId + "/" + RefNo + "/" + pacId + "/" + branchId;
+            var result = service.GetScalarObjectResult<bool>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("isInvestmentRefNoExists/{investTypeId}/{RefNo}/{pacId}/{branchId}")]
+        public bool isInvestmentShareAllottedNoExists(long investTypeId, string RefNo, long pacId, int branchId)
+        {
+            _log.Debug(" Entered in isInvestmentRefNoExists ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/isInvestmentShareAllottedNoExists" + "/" + investTypeId + "/" + RefNo + "/" + pacId + "/" + branchId;
+            var result = service.GetScalarObjectResult<bool>(webapiurl);
+            return result.Result;
+        }
+
+        //[Route("GetDepositType/{accountno}/{pacId}/{branchId}")]
+        public string GetDepositType(string accountno, long pacId, int branchId)
+        {
+            _log.Debug(" Entered in GetDepositType ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetDepositType" + "/" + accountno + "/" + pacId + "/" + branchId;
+            var result = service.GetScalarObjectResult<string>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("SaveInvestmentBackDate/{IsBackDate}")]
+        public String[] SaveInvestmentBackDate(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials, bool IsBackDate)
+        {
+            _log.Debug(" Entered in SaveInvestmentBackDate ");
+            GenericModels.GenericArgumentsModel<InvestmentApllicationDTO, UserCredentials> genericreportmodel = new GenericModels.GenericArgumentsModel<InvestmentApllicationDTO, UserCredentials>();
+            genericreportmodel.ClassObject_1 = objInvestmentApllicationDTO;
+            genericreportmodel.ClassObject_2 = usercredentials;
+
+            var jsonresult = JsonConvert.SerializeObject(genericreportmodel);
+            StringContent content = new StringContent(jsonresult, Encoding.UTF8, "application/json");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/SaveInvestmentBackDate" + "/" + IsBackDate;
+            var result = service.GetScalarObjectResultWithContent<String[]>(webapiurl, content);
+            return result.Result;
+        }
+
+
+        //[Route("GetInvestmentAccountsForInterestPosting/{bankType}/{bank}/{bankBranch}/{InvestmentType}")]
+        public IList<InvestmentInterestPostingDTO> GetInvestmentAccountsForInterestPosting(long bankType, long bank, long bankBranch, long InvestmentType, UserCredentials usercredentials)
+        {
+            _log.Debug(" Entered in GetInvestmentAccountsForInterestPosting ");
+            var jsonresult = JsonConvert.SerializeObject(usercredentials);
+            StringContent content = new StringContent(jsonresult, Encoding.UTF8, "application/json");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetInvestmentAccountsForInterestPosting" + "/" + bankType + "/" + bank + "/" + bankBranch + "/" + InvestmentType;
+            var result = service.GetListObjectResultWithContent<InvestmentInterestPostingDTO>(webapiurl, content);
+            return result.Result;
+        }
+
+
+        //[Route("SaveInvestmentInterestPostingDetails/{AddToInvestment}")]
+        public bool SaveInvestmentInterestPostingDetails(InvestmentInterestPostingDTO objInterestPostingsDTO, UserCredentials objUserCredentials, bool AddToInvestment, IList<InvestmentInterestPostingDTO> lstInterestPostingsDTONew)
+        {
+            _log.Debug(" Entered in SaveInvestmentInterestPostingDetails ");
+            GenericModels.GenericArgumentsModel<InvestmentInterestPostingDTO, UserCredentials> genericreportmodel = new GenericModels.GenericArgumentsModel<InvestmentInterestPostingDTO, UserCredentials>();
+            genericreportmodel.ClassObject_1 = objInterestPostingsDTO;
+            genericreportmodel.ClassObject_2 = objUserCredentials;
+            genericreportmodel.ListObject_1 = lstInterestPostingsDTONew.ToList();
+
+            var jsonresult = JsonConvert.SerializeObject(genericreportmodel);
+            StringContent content = new StringContent(jsonresult, Encoding.UTF8, "application/json");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/SaveInvestmentInterestPostingDetails" + "/" + AddToInvestment;
+            var result = service.GetScalarObjectResultWithContent<bool>(webapiurl, content);
+            return result.Result;
+        }
+
+
+        //[Route("GetInvestmentMasterListWithParameters/{pacsid}/{branchid}")]
+        public IList<InvestTypeMaster> GetInvestmentMasterListWithParameters(long pacsid, int branchid)
+        {
+            _log.Debug(" Entered in GetInvestmentMasterListWithParameters ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetInvestmentMasterListWithParameters" + "/" + pacsid + "/" + branchid;
+            var result = service.GetListObjectResult<InvestTypeMaster>(webapiurl);
+            return result.Result;
+        }
+
+
+        //[Route("GetTermInvestmentMasterListWithParameters/{pacsid}/{branchid}")]
+        public IList<InvestTypeMaster> GetTermInvestmentMasterListWithParameters(long pacsid, int branchid)
+        {
+            _log.Debug(" Entered in GetTermInvestmentMasterListWithParameters ");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetTermInvestmentMasterListWithParameters" + "/" + pacsid + "/" + branchid;
+            var result = service.GetListObjectResult<InvestTypeMaster>(webapiurl);
+            return result.Result;
+        }
+
+        
+        public IList<String> GetInvestmentAccountsForModify(long InvestmentType, DateTime LoginDate, long pacId, int branchId)
+        {
+            _log.Debug(" Entered in GetInvestmentAccountsForModify ");
+            var date = LoginDate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/GetInvestmentAccountsForModify" + "/" + InvestmentType + "/" + date + "/" + pacId + "/" + branchId;
+            var result = service.GetListObjectResult<String>(webapiurl);
+            return result.Result;
+        }
+
+        
+        public String[] ModifyInvestment(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials, bool IsDelete)
+        {
+            _log.Debug(" Entered in ModifyInvestment ");
+            GenericModels.GenericArgumentsModel<InvestmentApllicationDTO, UserCredentials> genericreportmodel = new GenericModels.GenericArgumentsModel<InvestmentApllicationDTO, UserCredentials>();
+            genericreportmodel.ClassObject_1 = objInvestmentApllicationDTO;
+            genericreportmodel.ClassObject_2 = usercredentials;
+
+            var jsonresult = JsonConvert.SerializeObject(genericreportmodel);
+            StringContent content = new StringContent(jsonresult, Encoding.UTF8, "application/json");
+            // var date = transactiondate.ToString("yyyy-MM-dd HH:mm:ss");
+            webapiurl = webapiurl + "IInvestmentApplicationIL/ModifyInvestment" + "/" + IsDelete;
+            var result = service.GetScalarObjectResultWithContent<String[]>(webapiurl, content);
+            return result.Result;
+        }
+    }
+}

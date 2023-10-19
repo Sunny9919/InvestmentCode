@@ -1,0 +1,696 @@
+using log4net;
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using Intellect.Unite.WebPackages.Investment.Model; 
+using Intellect.Unite.WebPackages.Mdm.Model; 
+using Intellect.Unite.WebPackages.Investment.DTO; 
+using Intellect.Unite.WebPackages.UserManagement.Model;
+using Intellect.Unite.WebPackages.Investment.IL;
+using Intellect.Unite.WebPackages.Investment.AL;
+using Intellect.Unite.WebPackages.FAS.Model.DTO;
+
+namespace UniteERPCore.API.Controllers
+{
+    [Route("IInvestmentApplicationIL")]
+    [ApiController]
+    public class IInvestmentApplicationILController : ControllerBase
+    {
+        IInvestmentApplicationIL _objIInvestmentApplicationIL;
+        ILog _log = LogManager.GetLogger(typeof(IInvestmentApplicationILController));
+        public IInvestmentApplicationILController()
+        {
+            //Create instance for IL to AL class
+            _objIInvestmentApplicationIL  = new InvestmentApplicationAL();
+        }
+
+
+        [Route("GetInvestmentMasterList")]
+        [HttpGet]
+        public IActionResult GetInvestmentMasterList()
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetInvestmentMasterList ");
+                var result = _objIInvestmentApplicationIL.GetInvestmentMasterList();
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetInvestmentMasterList, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetInvestmentDepositTypeList")]
+        [HttpGet]
+        public IActionResult GetInvestmentDepositTypeList()
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetInvestmentDepositTypeList ");
+                var result = _objIInvestmentApplicationIL.GetInvestmentDepositTypeList();
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetInvestmentDepositTypeList, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetFrequncyTypeMasterList")]
+        [HttpGet]
+        public IActionResult GetFrequncyTypeMasterList()
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetFrequncyTypeMasterList ");
+                var result = _objIInvestmentApplicationIL.GetFrequncyTypeMasterList();
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetFrequncyTypeMasterList, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetAccountCodeByTempAcc/{TempAccNo}/{productCode}/{pacId}/{branchId}")]
+        [HttpGet]
+        public IActionResult GetAccountCodeByTempAcc(string TempAccNo, int productCode, long pacId, int branchId)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetAccountCodeByTempAcc ");
+                var result = _objIInvestmentApplicationIL.GetAccountCodeByTempAcc(TempAccNo, productCode, pacId, branchId);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetAccountCodeByTempAcc, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("SaveInvestment")]
+        [HttpPost]
+        public IActionResult SaveInvestment([FromBody] GenericModels.GenericArgumentsModel<InvestmentApllicationDTO, UserCredentials> genericreportmodel)
+        {
+            try
+            {
+                //[FromBody]GenericModels.GenericArgumentsModel<InvestmentApllicationDTO,UserCredentials> genericreportmodel
+                _log.Debug(" Entered in SaveInvestment ");
+                var result = _objIInvestmentApplicationIL.SaveInvestment(genericreportmodel.ClassObject_1, genericreportmodel.ClassObject_2);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at SaveInvestment, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetNonCummulativeWithInterest/{Principal}/{ROI}/{NoOfYears}/{NoOfMonths}/{NoOfDays}/{LintDuration}/{isRounding}")]
+        [HttpGet]
+        public IActionResult GetNonCummulativeWithInterest(decimal Principal, decimal ROI, int NoOfYears, int NoOfMonths, int NoOfDays, int LintDuration, bool isRounding)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetNonCummulativeWithInterest ");
+                var result = _objIInvestmentApplicationIL.GetNonCummulativeWithInterest(Principal, ROI, NoOfYears, NoOfMonths, NoOfDays, LintDuration, isRounding);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetNonCummulativeWithInterest, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetCumulativeIntBasedOnIntType/{Principal}/{ROI}/{NoOfMonths}/{NoOfDays}/{InterestType}/{isRounding}/{InterestCalculationFrequency}")]
+        [HttpGet]
+        public IActionResult GetCumulativeIntBasedOnIntType(decimal Principal, decimal ROI, int NoOfMonths, int NoOfDays, int InterestType, bool isRounding, int InterestCalculationFrequency)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetCumulativeIntBasedOnIntType ");
+                var result = _objIInvestmentApplicationIL.GetCumulativeIntBasedOnIntType(Principal, ROI, NoOfMonths, NoOfDays, InterestType, isRounding, InterestCalculationFrequency);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetCumulativeIntBasedOnIntType, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetInvestTypeMasterHavingAccounts")]
+        [HttpGet]
+        public IActionResult GetInvestTypeMasterHavingAccounts()
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetInvestTypeMasterHavingAccounts ");
+                var result = _objIInvestmentApplicationIL.GetInvestTypeMasterHavingAccounts();
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetInvestTypeMasterHavingAccounts, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetAccountCodePkey")]
+        [HttpPost ]
+        public IActionResult GetAccountCodePkey([FromBody] FormBodyDTO objFormBodyDTO)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetAccountCodePkey ");
+                var result = _objIInvestmentApplicationIL.GetAccountCodePkey(objFormBodyDTO.AccountCode, objFormBodyDTO.PacsId, objFormBodyDTO.BranchID);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetAccountCodePkey, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetBankTypeMasterDtls")]
+        [HttpGet]
+        public IActionResult GetBankTypeMasterDtls()
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetBankTypeMasterDtls ");
+                var result = _objIInvestmentApplicationIL.GetBankTypeMasterDtls();
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetBankTypeMasterDtls, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetBankDetailsByBankType/{bankType}/{Pacid}/{branchid}")]
+        [HttpGet]
+        public IActionResult GetBankDetailsByBankType(long bankType, long Pacid, int branchid)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetBankDetailsByBankType ");
+                var result = _objIInvestmentApplicationIL.GetBankDetailsByBankType(bankType, Pacid, branchid);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetBankDetailsByBankType, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetBankMasterList")]
+        [HttpGet]
+        public IActionResult GetBankMasterList()
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetBankMasterList ");
+                var result = _objIInvestmentApplicationIL.GetBankMasterList();
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetBankMasterList, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetBankBranchMasterList/{bankId}/{Pacid}/{branchid}")]
+        [HttpGet]
+        public IActionResult GetBankBranchMasterList(long bankId, long Pacid, int branchid)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetBankBranchMasterList ");
+                var result = _objIInvestmentApplicationIL.GetBankBranchMasterList(bankId, Pacid, branchid);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetBankBranchMasterList, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetInvestmentAccounts/{bankType}/{bank}/{bankBranch}/{InvestmentType}/{pacId}/{branchId}/{LoginDate}")]
+        [HttpGet]
+        public IActionResult GetInvestmentAccounts(long bankType, long bank, long bankBranch, long InvestmentType, long pacId, int branchId, DateTime LoginDate)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetInvestmentAccounts ");
+                var result = _objIInvestmentApplicationIL.GetInvestmentAccounts(bankType, bank, bankBranch, InvestmentType, pacId, branchId, LoginDate);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetInvestmentAccounts, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetInvestmentAccountsForNonCumInvestPay/{bankType}/{bank}/{bankBranch}/{InvestmentType}/{pacId}/{branchId}")]
+        [HttpGet]
+        public IActionResult GetInvestmentAccountsForNonCumInvestPay(long bankType, long bank, long bankBranch, long InvestmentType, long pacId, int branchId)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetInvestmentAccountsForNonCumInvestPay ");
+                var result = _objIInvestmentApplicationIL.GetInvestmentAccountsForNonCumInvestPay(bankType, bank, bankBranch, InvestmentType, pacId, branchId);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetInvestmentAccountsForNonCumInvestPay, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetInvestmentAccountsForeclosure/{bankType}/{bank}/{bankBranch}/{InvestmentType}/{LoginDate}/{pacId}/{branchId}")]
+        [HttpGet]
+        public IActionResult GetInvestmentAccountsForeclosure(long bankType, long bank, long bankBranch, long InvestmentType, DateTime LoginDate, long pacId, int branchId)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetInvestmentAccountsForeclosure ");
+                var result = _objIInvestmentApplicationIL.GetInvestmentAccountsForeclosure(bankType, bank, bankBranch, InvestmentType, LoginDate, pacId, branchId);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetInvestmentAccountsForeclosure, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetInvestmentAccountsClosure/{bankType}/{bank}/{bankBranch}/{InvestmentType}/{LoginDate}/{pacId}/{branchId}")]
+        [HttpGet]
+        public IActionResult GetInvestmentAccountsClosure(long bankType, long bank, long bankBranch, long InvestmentType, DateTime LoginDate, long pacId, int branchId)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetInvestmentAccountsClosure ");
+                var result = _objIInvestmentApplicationIL.GetInvestmentAccountsClosure(bankType, bank, bankBranch, InvestmentType, LoginDate, pacId, branchId);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetInvestmentAccountsClosure, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetInvestmentShareAccounts/{bankType}/{bank}/{bankBranch}/{InvestmentType}/{pacId}/{branchId}/{LoginDate}")]
+        [HttpGet]
+        public IActionResult GetInvestmentShareAccounts(long bankType, long bank, long bankBranch, long InvestmentType, long pacId, int branchId, DateTime LoginDate)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetInvestmentShareAccounts ");
+                var result = _objIInvestmentApplicationIL.GetInvestmentShareAccounts(bankType, bank, bankBranch, InvestmentType, pacId, branchId, LoginDate);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetInvestmentShareAccounts, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetRenewalInvestmentAccounts/{bankType}/{bank}/{bankBranch}/{InvestmentType}/{LoginDate}/{pacId}/{branchId}")]
+        [HttpGet]
+        public IActionResult GetRenewalInvestmentAccounts(long bankType, long bank, long bankBranch, long InvestmentType, DateTime LoginDate, long pacId, int branchId)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetRenewalInvestmentAccounts ");
+                var result = _objIInvestmentApplicationIL.GetRenewalInvestmentAccounts(bankType, bank, bankBranch, InvestmentType, LoginDate, pacId, branchId);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetRenewalInvestmentAccounts, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetRenewalAccountDetails/{accountNo}/{pacId}/{branchId}")]
+        [HttpGet]
+        public IActionResult GetRenewalAccountDetails(string accountNo, long pacId, int branchId)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetRenewalAccountDetails ");
+                var result = _objIInvestmentApplicationIL.GetRenewalAccountDetails(accountNo, pacId, branchId);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetRenewalAccountDetails, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("RenewalInvestmentApplication")]
+        [HttpPost]
+        public IActionResult RenewalInvestmentApplication([FromBody] GenericModels.GenericArgumentsModel<InvestmentApllicationDTO, UserCredentials> genericreportmodel)
+        {
+            try
+            {
+                //[FromBody]GenericModels.GenericArgumentsModel<InvestmentApllicationDTO,UserCredentials> genericreportmodel
+                _log.Debug(" Entered in RenewalInvestmentApplication ");
+                var result = _objIInvestmentApplicationIL.RenewalInvestmentApplication(genericreportmodel.ClassObject_1, genericreportmodel.ClassObject_2);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at RenewalInvestmentApplication, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetTermInvestmentMasterList")]
+        [HttpGet]
+        public IActionResult GetTermInvestmentMasterList()
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetTermInvestmentMasterList ");
+                var result = _objIInvestmentApplicationIL.GetTermInvestmentMasterList();
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetTermInvestmentMasterList, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetInvestTypeMasterId/{investmentTypeId}")]
+        [HttpGet]
+        public IActionResult GetInvestTypeMasterId(long investmentTypeId)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetInvestTypeMasterId ");
+                var result = _objIInvestmentApplicationIL.GetInvestTypeMasterId(investmentTypeId);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetInvestTypeMasterId, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetInvestmentProduct")]
+        [HttpGet]
+        public IActionResult GetInvestmentProduct()
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetInvestmentProduct ");
+                var result = _objIInvestmentApplicationIL.GetInvestmentProduct();
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetInvestmentProduct, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("isInvestmentRefNoExists/{investTypeId}/{RefNo}/{pacId}/{branchId}")]
+        [HttpGet]
+        public IActionResult isInvestmentRefNoExists(long investTypeId, string RefNo, long pacId, int branchId)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in isInvestmentRefNoExists ");
+                var result = _objIInvestmentApplicationIL.isInvestmentRefNoExists(investTypeId, RefNo, pacId, branchId);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at isInvestmentRefNoExists, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+        [Route("isInvestmentShareAllottedNoExists/{investTypeId}/{RefNo}/{pacId}/{branchId}")]
+        [HttpGet]
+        public IActionResult isInvestmentShareAllottedNoExists(long investTypeId, string RefNo, long pacId, int branchId)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in isInvestmentShareAllottedNoExists ");
+                var result = _objIInvestmentApplicationIL.isInvestmentShareAllottedNoExists(investTypeId, RefNo, pacId, branchId);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at isInvestmentShareAllottedNoExists, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+        [Route("GetDepositType/{accountno}/{pacId}/{branchId}")]
+        [HttpGet]
+        public IActionResult GetDepositType(string accountno, long pacId, int branchId)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetDepositType ");
+                var result = _objIInvestmentApplicationIL.GetDepositType(accountno, pacId, branchId);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetDepositType, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("SaveInvestmentBackDate/{IsBackDate}")]
+        [HttpPost]
+        public IActionResult SaveInvestmentBackDate([FromBody] GenericModels.GenericArgumentsModel<InvestmentApllicationDTO, UserCredentials> genericreportmodel, bool IsBackDate)
+        {
+            try
+            {
+                //[FromBody]GenericModels.GenericArgumentsModel<InvestmentApllicationDTO,UserCredentials> genericreportmodel
+                _log.Debug(" Entered in SaveInvestmentBackDate ");
+                var result = _objIInvestmentApplicationIL.SaveInvestmentBackDate(genericreportmodel.ClassObject_1, genericreportmodel.ClassObject_2, IsBackDate);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at SaveInvestmentBackDate, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetInvestmentAccountsForInterestPosting/{bankType}/{bank}/{bankBranch}/{InvestmentType}")]
+        [HttpPost]
+        public IActionResult GetInvestmentAccountsForInterestPosting(long bankType, long bank, long bankBranch, long InvestmentType, [FromBody] UserCredentials usercredentials)
+        {
+            try
+            {
+                //[FromBody]GenericModels.GenericArgumentsModel<UserCredentials> genericreportmodel
+                _log.Debug(" Entered in GetInvestmentAccountsForInterestPosting ");
+                var result = _objIInvestmentApplicationIL.GetInvestmentAccountsForInterestPosting(bankType, bank, bankBranch, InvestmentType, usercredentials);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetInvestmentAccountsForInterestPosting, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("SaveInvestmentInterestPostingDetails/{AddToInvestment}")]
+        [HttpPost]
+        public IActionResult SaveInvestmentInterestPostingDetails([FromBody] GenericModels.GenericArgumentsModel<InvestmentInterestPostingDTO, UserCredentials, InvestmentInterestPostingDTO> genericreportmodel, bool AddToInvestment)
+        {
+            try
+            {
+                //[FromBody]GenericModels.GenericArgumentsModel<InvestmentInterestPostingDTO,UserCredentials,IList<InvestmentInterestPostingDTO>> genericreportmodel
+                _log.Debug(" Entered in SaveInvestmentInterestPostingDetails ");
+                var result = _objIInvestmentApplicationIL.SaveInvestmentInterestPostingDetails(genericreportmodel.ClassObject_1, genericreportmodel.ClassObject_2, AddToInvestment, genericreportmodel.ListObject_1);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at SaveInvestmentInterestPostingDetails, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetInvestmentMasterListWithParameters/{pacsid}/{branchid}")]
+        [HttpGet]
+        public IActionResult GetInvestmentMasterListWithParameters(long pacsid, int branchid)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetInvestmentMasterListWithParameters ");
+                var result = _objIInvestmentApplicationIL.GetInvestmentMasterListWithParameters(pacsid, branchid);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetInvestmentMasterListWithParameters, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("GetTermInvestmentMasterListWithParameters/{pacsid}/{branchid}")]
+        [HttpGet]
+        public IActionResult GetTermInvestmentMasterListWithParameters(long pacsid, int branchid)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetTermInvestmentMasterListWithParameters ");
+                var result = _objIInvestmentApplicationIL.GetTermInvestmentMasterListWithParameters(pacsid, branchid);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetTermInvestmentMasterListWithParameters, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+
+        [Route("GetInvestmentAccountsForModify/{InvestmentType}/{LoginDate}/{pacId}/{branchId}")]
+        [HttpGet]
+        public IActionResult GetInvestmentAccountsForModify(long InvestmentType, DateTime LoginDate, long pacId, int branchId)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in GetInvestmentAccountsForModify ");
+                var result = _objIInvestmentApplicationIL.GetInvestmentAccountsForModify(InvestmentType, LoginDate, pacId, branchId);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at GetInvestmentAccountsForModify, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+        [Route("ModifyInvestment/{IsDelete}")]
+        [HttpPost]
+        public IActionResult ModifyInvestment([FromBody] GenericModels.GenericArgumentsModel<InvestmentApllicationDTO, UserCredentials> genericreportmodel, bool IsDelete)
+        {
+            try
+            {
+                //[FromBody]GenericModels.GenericArgumentsModel<InvestmentApllicationDTO,UserCredentials> genericreportmodel
+                
+                _log.Debug(" Entered in ModifyInvestment ");
+                var result = _objIInvestmentApplicationIL.ModifyInvestment(genericreportmodel.ClassObject_1, genericreportmodel.ClassObject_2, IsDelete);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at ModifyInvestment, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+        [Route("getOBInterestAmount/{AccountNo}/{cutoffDt}/{pacId}/{branchId}")]
+        [HttpGet]
+        public IActionResult getOBInterestAmount(string AccountNo, DateTime cutoffDt, long pacId, int branchId)
+        {
+            try
+            {
+
+                _log.Debug(" Entered in getOBInterestAmount ");
+                var result = _objIInvestmentApplicationIL.getOBInterestAmount(AccountNo, cutoffDt, pacId, branchId);
+                return new JsonResult(result);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(" Exception raised at getOBInterestAmount, and the exception is : " + ex.ToString());
+                return new JsonResult(false);
+            }
+        }
+
+
+    }
+}

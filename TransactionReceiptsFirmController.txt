@@ -1,0 +1,1339 @@
+﻿using ERPClient.Models;
+using Microsoft.Reporting.NETCore;
+using ERPClient.Services;//using Intellect.Unite.WebPackages.FAS.AL;
+using Intellect.Unite.WebPackages.FAS.Model;
+using Intellect.Unite.WebPackages.FAS.Model.DTO;
+using Intellect.Unite.WebPackages.Framework.EndPointGenerator;
+//using Intellect.Unite.WebPackages.Investment.AL;
+using Intellect.Unite.WebPackages.Investment.Model;
+using Intellect.Unite.WebPackages.Loans.DTO;
+//using Intellect.Unite.WebPackages.Mdm.AL;
+using Intellect.Unite.WebPackages.Mdm.Model;
+//using Intellect.Unite.WebPackages.Membership.AL;
+using Intellect.Unite.WebPackages.Membership.Model;
+using Intellect.Unite.WebPackages.UserManagement.Model;
+//using Intellect.Unite.WebPackages.VoucherProcessing.AL;
+using Intellect.Unite.WebPackages.VoucherProcessing.Model;
+using Intellect.Unite.WebPackages.VoucherProcessing.Model.DTO;
+using Intellect.UniteERP.MyResources.FAS;
+using log4net;
+//using System.Web;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Data;
+using System.Xml;
+using Newtonsoft.Json;
+using Intellect.Unite.WebPackages.HRMS.Model;
+using Intellect.UniteERP.MyResources.Assets;
+
+namespace ERPClient.Areas.FAS.Controllers
+{
+    [Area("FAS")]
+    public class TransactionReceiptsFirmController : Controller
+    {
+        ICustomerPersonalDetailsIL OBJAL;//;= new CustomerPersonalDetailsAL();
+        ICommonFasIl objcommAL;//;= new CommonFasAl();
+        IPassVoucherIl passvoucherIL;//= new PassVoucherAl();
+        TransactionIL objTransactionRec;// = new TransactionAL();
+        IPrepareTransferVoucherIl prepareTransferVoucherIL;//= new PrepareTransferVoucherAl();
+        ITransfersIL objTransfersIL;//= new TransfersAL();
+        FactoryGenerator objFactoryGenerator = new FactoryGenerator();
+        ILog log = LogManager.GetLogger(typeof(TransactionPaymentController));
+        IInvestmentApplicationIL objInvestIL;//= new InvestmentApplicationAL();
+        ReportSignatureHelper objreporthelper = null;
+        DynamicServiceInvoker ServiceInvoker = new DynamicServiceInvoker(); string webrootpath = string.Empty;
+        string culture = "en-GB";
+        public TransactionReceiptsFirmController(IWebHostEnvironment webhost, IHttpContextAccessor httpContextAccessor)
+        {
+            objreporthelper = new ReportSignatureHelper();
+            if (httpContextAccessor.HttpContext == null || httpContextAccessor.HttpContext.Session.GetSessionData<string>("culture") == null)
+            {
+                culture = "en-GB";
+            }
+            else
+            {
+                culture = (string)httpContextAccessor.HttpContext.Session.GetSessionData<string>("culture");
+            }
+            UserCredentials usercredentials = (UserCredentials)httpContextAccessor.HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            if (usercredentials != null)
+            {
+                usercredentials.Culture = culture;
+                httpContextAccessor.HttpContext.Session.SetSessionData("Login", usercredentials);
+            }
+            Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo(culture);
+            Thread.CurrentThread.CurrentUICulture = Thread.CurrentThread.CurrentCulture;
+            var v = new System.Globalization.DateTimeFormatInfo();
+            v.ShortDatePattern = "dd/MM/yyyy";
+            Thread.CurrentThread.CurrentUICulture.DateTimeFormat = v;
+            // Code Changed by Sunil
+            object[] objparellelrun = new object[1];
+            objparellelrun[0] = usercredentials;
+            Type[] typep = new Type[1];
+            typep[0] = typeof(UserCredentials);
+            string ParellelRun = (string)ServiceInvoker.MethodInvoke<ICommonFasIl>(objcommAL, "GetParameterValueForParallelRun", typep, objparellelrun);
+            httpContextAccessor.HttpContext.Session.SetSessionData("_sharedparellelValue", ParellelRun);
+            // Code Changed by Sunil
+        }
+        //
+        // GET: /FAS/TransactionReceiptsFirm/
+        public ActionResult TransactionReceiptsFirm(int formid, int moduleid, string msg, int? msgtype)
+        {
+            string myValue = HttpContext.Session.GetString("_sharedparellelValue");
+            myValue = myValue?.Trim('"', ' ');
+            if (myValue == "Y")
+            {
+                ViewBag.parallelrun = 1;
+            }
+            else
+            {
+                ViewBag.parallelrun = 0;
+            }
+            UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            HttpContext.Session.SetSessionData("ModuleID", Convert.ToString( Request.Query["moduleid"]));
+            HttpContext.Session.SetSessionData("ModuleID", moduleid);
+            if (usercredentials == null)
+            {
+                return RedirectToAction("Login", "Account", new { area = "" });
+            }
+            if (usercredentials.isCashCounterIdMandatary == true)
+            {
+                if (usercredentials.CashBookId == 0)
+                {
+                    TempData["msg"] = "Assign cash counter " + usercredentials.UserName;
+                    TempData["msgtype"] = 2;
+                    //return RedirectToAction("Login", "Account", new { area = "" });
+                }
+            }
+            ViewBag.Posted = 2;
+            ViewBag.CutoffDate = usercredentials.CutOffDate.Value.ToString("yyyy-MM-dd");
+            ViewBag.IsForBackDate = "N";
+            HttpContext.Session.SetSessionData("AccountDetails", null);
+            HttpContext.Session.SetSessionData("TransDetail", null);
+            TransactionDTO objTransactionDTO = new TransactionDTO();
+            objTransactionDTO.SanctionDetailsDTO = new Intellect.Unite.WebPackages.Loans.DTO.SanctionsDTO();
+            //CustomerParameterMaster MinShareBalance = OBJAL.GetCustomerParameterByID(7, usercredentials.PacsId, usercredentials.BranchId);
+            //object[] objparameterslist = new object[3];
+            //objparameterslist[0] = 7;
+            //objparameterslist[1] = usercredentials.PacsId;
+            //objparameterslist[2] = usercredentials.BranchId;
+            //Type[] types = new Type[3];
+            //types[0] = typeof(Int32);
+            //types[1] = typeof(Int64);
+            //types[2] = typeof(Int32);
+            FormBodyDTO objFormBodyDTO = new FormBodyDTO();
+            objFormBodyDTO.ID = 7;
+            objFormBodyDTO.PacsId = usercredentials.PacsId;
+            objFormBodyDTO.BranchID = usercredentials.BranchId;
+            object[] objparameterslist = new object[1];
+            objparameterslist[0] = objFormBodyDTO;
+            Type[] types = new Type[1];
+            types[0] = typeof(FormBodyDTO);
+            CustomerParameterMaster MinShareBalance = (CustomerParameterMaster)ServiceInvoker.MethodInvoke<ICustomerPersonalDetailsIL>(OBJAL, "GetCustomerParameterByID", types, objparameterslist);
+            if (MinShareBalance != null)
+            {
+                ViewBag.MinShareBalance = MinShareBalance.Value;
+            }
+            else
+            {
+                ViewBag.MinShareBalance = 0;
+            }
+            FillCombos(usercredentials, formid);
+            if (usercredentials.isCashCounterIdMandatary == true)
+            {
+                if (usercredentials.CashBookId == 0)
+                {
+                    TempData["msg"] = "Assign cash counter " + usercredentials.UserName;
+                    TempData["msgtype"] = 2;
+                    //return RedirectToAction("Login", "Account", new { area = "" });
+                }
+            }
+            RoleIdAndFormIdBasedUser objRoleIdAndFormIdBasedUser = new RoleIdAndFormIdBasedUser();
+            bool isFormExixtForThisUser = objRoleIdAndFormIdBasedUser.CheckUserRolebasedForm(Convert.ToString(usercredentials.RoleId), formid);
+            if (isFormExixtForThisUser == false)
+            {
+                TempData["msg"] = resAssetMessages.NotAuthorized;
+                TempData["msgtype"] = 5;
+                return View();
+            }
+            return View(objTransactionDTO);
+        }
+        [CustomErrors]
+        [HandleError]
+        [HttpPost]
+        [Audit(command = "TransactionReceiptsFirm")]
+        public async Task<ActionResult> TransactionReceiptsFirm(TransactionDTO objTransactionDTO, string command, Nullable<long> VoucherNoForPening)
+        {
+            string msg = "";
+            int? msgtype = null;
+            UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            HttpContext.Session.SetSessionData("ModuleID", Convert.ToString( Request.Query["moduleid"]));
+            int formid = objTransactionDTO.formid;
+            ViewBag.CutoffDate = usercredentials.CutOffDate.Value.ToString("yyyy-MM-dd");
+            ViewBag.IsForBackDate = "N";
+            objTransactionDTO.AccountNo = objTransactionDTO.InvestmentAccToPost;
+            //objTransactionDTO.AccountPkey = objInvestIL.GetAccountCodePkey(objTransactionDTO.AccountNo, usercredentials.PacsId, usercredentials.BranchId);
+            //[Route("GetAccountCodePkey/{accountCode}/{pacid}/{brachid}")]
+
+            FormBodyDTO ObjFormBodyDTO = new FormBodyDTO();
+            ObjFormBodyDTO.AccountCode= objTransactionDTO.AccountNo;
+            ObjFormBodyDTO.PacsId = usercredentials.PacsId;
+            ObjFormBodyDTO.BranchID = usercredentials.BranchId;
+
+
+            object[] objparameterslist1 = new object[1];
+            objparameterslist1[0] = ObjFormBodyDTO;
+            Type[] types1 = new Type[1];
+            types1[0] = typeof(FormBodyDTO);
+            objTransactionDTO.AccountPkey = (long)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objInvestIL, "GetAccountCodePkey", types1, objparameterslist1);
+            if (usercredentials.isCashCounterIdMandatary == true)
+            {
+                if (usercredentials.CashBookId == 0)
+                {
+                    TempData["msg"] = "Assign cash counter " + usercredentials.UserName;
+                    TempData["msgtype"] = 2;
+                    return RedirectToAction("Login", "Account", new { area = "" });
+                }
+            }
+            //DayEnd objDayEndStatus = objTransactionRec.GetDayEndStatusByDate(usercredentials.Logindatetime.Date, usercredentials.BranchId, usercredentials.PacsId);
+            bool IsYEPCompleted = false;
+            if (VoucherNoForPening != null && VoucherNoForPening > 0)
+            {
+                IsYEPCompleted = false;
+            }
+            else
+            {
+                //IsYEPCompleted = objcommAL.IsYEPCompleted(objTransactionDTO.TransactionDate, usercredentials.PacsId, usercredentials.BranchId);
+                //object[] objparameterslist = new object[3];
+                //objparameterslist[0] = objTransactionDTO.TransactionDate;
+                //objparameterslist[1] = usercredentials.PacsId;
+                //objparameterslist[2] = usercredentials.BranchId;
+                //Type[] types = new Type[3];
+                //types[0] = typeof(DateTime);
+                //types[1] = typeof(Int64);
+                //types[2] = typeof(Int32);
+                FormBodyDTO objFormBodyDTO2 = new FormBodyDTO();
+                objFormBodyDTO2.TransactionDate = objTransactionDTO.TransactionDate;
+                objFormBodyDTO2.PacsId = usercredentials.PacsId;
+                objFormBodyDTO2.BranchID = usercredentials.BranchId;
+                object[] objparameterslist = new object[1];
+                objparameterslist[0] = objFormBodyDTO2;
+                Type[] types = new Type[1];
+                types[0] = typeof(FormBodyDTO);
+                IsYEPCompleted = (bool)ServiceInvoker.MethodInvoke<ICommonFasIl>(objcommAL, "IsYEPCompleted", types, objparameterslist);
+            }
+            //if (objDayEndStatus == null)
+            //{
+            //    objDayEndStatus.Date = usercredentials.Logindatetime.Date.AddDays(-1);
+            //}
+            //if (objDayEndStatus.Date < usercredentials.Logindatetime.Date)
+            //{
+            if (IsYEPCompleted == true)
+            {
+                msg = resFasMessages.YearEndCompleted;
+                //ViewData["msg"]= commonFasIL.GetMessageDescription(1);
+                TempData["msg"] = msg;
+                TempData["msgtype"] = 2;
+            }
+            else if (VoucherNoForPening != null)
+            {
+                //bool voucherapprovalstatus = objTransactionRec.GetVoucherApprovalStatus(Convert.ToInt64(VoucherNoForPening), usercredentials);
+                FormBodyDTO objFormBodyDTO = new FormBodyDTO();
+                objFormBodyDTO.VoucherId = Convert.ToInt64(VoucherNoForPening); 
+                object[] objparameterslist = new object[2];
+                objparameterslist[0] = objFormBodyDTO;
+                objparameterslist[1] = usercredentials;
+                Type[] types = new Type[2];
+                types[0] = typeof(FormBodyDTO);
+                types[1] = typeof(UserCredentials);
+                bool voucherapprovalstatus = (bool)ServiceInvoker.MethodInvoke<TransactionIL>(objTransactionRec, "GetVoucherApprovalStatus", types, objparameterslist);
+                if (voucherapprovalstatus == false)
+                {
+                    msg = resFasMessages.VoucherpreparedNotAuthorizedtopost;
+                    TempData["msg"] = msg;
+                    TempData["msgtype"] = 2;
+                }
+                else
+                {
+                    // ViewBag.VoucherNo = VoucherNoForPening;
+                    TempData["VoucherNo"] = VoucherNoForPening;
+                    //ViewBag.VoucherNo = VoucherNoForPening;
+                    FillCombos(usercredentials, objTransactionDTO.formid);
+                    //ViewBag.PendingForPosting = true;
+                    TempData["PendingForPosting"] = true;
+                    objTransactionDTO = new TransactionDTO();
+                    ModelState.Clear();
+                }
+            }
+            else
+            {
+                if (command == resFasLables.Prepare)
+                {
+                    if (objTransactionDTO != null && objTransactionDTO.TotalAmount > 0)
+                    {
+                        bool validations = true;
+                        if (validations == true)
+                        {
+                            //object[] voucherstatus = objTransactionRec.SaveTransactionDetailsForFirm(objTransactionDTO, usercredentials, true);
+                            IList<Intellect.Unite.WebPackages.Loans.Model.OutStandingResults> list = null;
+                            object[] objparameterslist = new object[3];
+                            objparameterslist[0] = objTransactionDTO;
+                            objparameterslist[1] = usercredentials;
+                            objparameterslist[2] = true;
+                            //Type[] types = new Type[3];
+                            //types[0] = typeof(TransactionDTO);
+                            //types[1] = typeof(UserCredentials);
+                            //types[2] = typeof(Boolean);
+                            object[] voucherstatus = (object[])ServiceInvoker.MethodInvoke<TransactionIL>(objTransactionRec, "SaveTransactionDetailsForFirm", null, objparameterslist);
+                            if (voucherstatus != null)
+                            {
+                                long voucherid = Convert.ToInt64(voucherstatus[0]);
+                                decimal debit = Convert.ToDecimal(voucherstatus[1]);
+                                decimal credit = Convert.ToDecimal(voucherstatus[2]);
+                                bool approvallimitstatus = Convert.ToBoolean(voucherstatus[3]);
+                                string errormessage = string.Empty;
+                                errormessage = Convert.ToString(voucherstatus[4]);
+                                if (voucherid != 0)
+                                {
+                                    msg = resFasMessages.Voucherpreparedsuccessfully;
+                                    TempData["msg"] = msg;//objTransactionRec.GetMessageDescription(1023);
+                                    TempData["msgtype"] = 1;
+                                    if (approvallimitstatus == false)
+                                    {
+                                        ViewBag.VoucherNo = voucherid;
+                                        TempData["transactionvouchernumber"] = Convert.ToString(voucherid);
+                                        msg = resFasMessages.VoucherpreparedNotAuthorizedtopost;
+                                        TempData["msg"] = msg;
+                                        TempData["msgtype"] = 2;
+                                    }
+                                    else if (debit != credit)
+                                    {
+                                    }
+                                    else
+                                    {
+                                        ViewBag.VoucherNo = voucherid;
+                                        TempData["transactionvouchernumber"] = Convert.ToString(voucherid);
+                                        // ViewBag.VoucherNo = voucherid;
+                                        //TempData["VoucherNo"] = voucherid;
+                                        //string isimmediatepost = objcommAL.GetParameterValueforIsimmediatepostchecking(usercredentials);
+                                        objparameterslist = new object[1];
+                                        objparameterslist[0] = usercredentials;
+                                        Type[] types = new Type[1];
+                                        types[0] = typeof(UserCredentials);
+                                        string isimmediatepost = (string)ServiceInvoker.MethodInvoke<ICommonFasIl>(objcommAL, "GetParameterValueforIsimmediatepostchecking", types, objparameterslist);
+                                        TempData["isImmediatePost"] = isimmediatepost;// "N";
+                                        FillCombos(usercredentials, objTransactionDTO.formid);
+                                        TempData["Posted"] = 1;
+                                    }
+                                    objTransactionDTO = new TransactionDTO();
+                                    objTransactionDTO.MoreDisbursmentDetails = new Intellect.Unite.WebPackages.Loans.Model.MoreDisbursementDetails();
+                                    objTransactionDTO.SanctionDetailsDTO = new Intellect.Unite.WebPackages.Loans.DTO.SanctionsDTO();
+                                    ModelState.Clear();
+                                }
+                                else
+                                {
+                                    FillCombos(usercredentials, objTransactionDTO.formid);
+                                    if (!string.IsNullOrEmpty(errormessage))
+                                    {
+                                        TempData["msg"] = errormessage;
+                                        //ViewData["msg"] = objTransactionRec.GetMessageDescription(3301);
+                                        TempData["msgtype"] = 2;
+                                    }
+                                    else
+                                    {
+                                        TempData["msg"] = resFasMessages.UnableToCompleteTransaction;
+                                        //ViewData["msg"] = objTransactionRec.GetMessageDescription(3301);
+                                        TempData["msgtype"] = 3;
+                                    }
+                                    //return View(objTransactionDTO);
+                                }
+                            }
+                            else
+                            {
+                                TempData["msg"] = resFasMessages.UnableToCompleteTransaction;
+                                //ViewData["msg"] = objTransactionRec.GetMessageDescription(3301);
+                                TempData["msgtype"] = 3;
+                            }
+                            //}
+                        }
+                        else
+                        {
+                            FillCombos(usercredentials, objTransactionDTO.formid);
+                            //return View(objTransactionDTO);
+                        }
+                    }
+                    else
+                    {
+                        msg = resFasMessages.FillAllCompulsoryFields;
+                        TempData["msg"] = msg;
+                        //ViewData["msg"] = objTransactionRec.GetMessageDescription(3301);
+                        TempData["msgtype"] = 1;
+                        FillCombos(usercredentials, objTransactionDTO.formid);
+                        //ModelState.Clear();
+                        //return View(objTransactionDTO);
+                    }
+                }
+                else if (command == resFasLables.Clear)
+                {
+                    FillCombos(usercredentials, objTransactionDTO.formid);
+                    ModelState.Clear();
+                    objTransactionDTO = new TransactionDTO();
+                    objTransactionDTO.MoreDisbursmentDetails = new Intellect.Unite.WebPackages.Loans.Model.MoreDisbursementDetails();
+                    objTransactionDTO.SanctionDetailsDTO = new Intellect.Unite.WebPackages.Loans.DTO.SanctionsDTO();
+                    //return View(objTransactionDTO);
+                }
+            }
+            //}
+            // HttpContext.Session.GetSessionData<IList<AccountDetailsTemp>>("AccountDetails") = null;
+            return RedirectToAction("TransactionReceiptsFirm", new { formid = formid, moduleid = Convert.ToInt32(HttpContext.Session.GetSessionData<int>("ModuleId")) });
+        }
+        private void FillCombos(UserCredentials usercredentials, int formid)
+        {
+            TransactionDTO objTransactionDTO = new TransactionDTO();
+            objTransactionDTO.MoreDisbursmentDetails = new Intellect.Unite.WebPackages.Loans.Model.MoreDisbursementDetails();
+            IList<ProductTypeMasterDTO> listModule = new List<ProductTypeMasterDTO>();
+            //listModule = objTransactionRec.GetProductTypeDetailsforDTO();
+            listModule  = (IList<ProductTypeMasterDTO>)ServiceInvoker.MethodInvoke<IPassVoucherIl>(passvoucherIL, "GetProductTypeDetailsforDTO", null, null);
+            ViewBag.Modulelist = new SelectList(listModule, "ProductTypeID", "ProductTypeDescription");
+            IList<ProductMaster> listProductMaster = new List<ProductMaster>();
+            ViewBag.productlist = new SelectList(listProductMaster, "LedgerId", "LedgerName");
+            IList<VoucherTypeMaster> listVoucherTypeMaster = new List<VoucherTypeMaster>();
+            //listVoucherTypeMaster = objTransactionRec.GetVoucherTypeDetails();
+            listVoucherTypeMaster = (IList<VoucherTypeMaster>)ServiceInvoker.MethodInvoke<TransactionIL>(objTransactionRec, "GetVoucherTypeDetails", null, null);
+            listVoucherTypeMaster.Select(i =>
+            {
+                if (culture != "" && culture != "en-GB")
+                {
+                    if (!string.IsNullOrEmpty(i.VoucherTypeDescriptionRegional))
+                    {
+                        i.VoucherTypeDescription = i.VoucherTypeDescriptionRegional;
+                    }
+                    else
+                    {
+                        i.VoucherTypeDescription = i.VoucherTypeDescription;
+                    }
+                }
+                else
+                {
+                    i.VoucherTypeDescription = i.VoucherTypeDescription;
+                }
+                return i;
+            }).ToList();
+            ViewBag.TransactionTypeList = new SelectList(listVoucherTypeMaster, "VoucherTypeID", "VoucherTypeDescription");
+            IList<AccountDetails> listAccountDetails = new List<AccountDetails>();
+            ViewBag.AccountNoList = new SelectList(listAccountDetails, "AccountID", "AccountCode");
+            IList<ProductWiseActivities> objActivityType = new List<ProductWiseActivities>();
+            ViewBag.ListOfActivity = new SelectList(objActivityType, "SWTransPKey", "ActivityTypeDescription");
+            IList<ProductMaster> listcontraProductMaster = new List<ProductMaster>();
+            ViewBag.Contraproductlist = new SelectList(listcontraProductMaster, "ProductTypeID", "ProductTypeDescription");
+            IList<AccountDetails> listContraAccountDetails = new List<AccountDetails>();
+            ViewBag.ContraAccountNoList = new SelectList(listContraAccountDetails, "AccountID", "AccountCode");
+            IList<SWModuleOtherCharges> objSWModuleOtherCharges = new List<SWModuleOtherCharges>();
+            ViewBag.listOfOtherCharges = new SelectList(objSWModuleOtherCharges, "LedgerID", "LedgerDescription");
+            //IList<CommonControlRecordDTO> objCommonControl = new List<CommonControlRecordDTO>();
+            //objCommonControl = objCommonBL.GetControlRecordDetails(usercredentials);
+            //ViewBag.CommonControlRecord = objCommonControl;
+            IList<ProductWiseActivities> objActivity = new List<ProductWiseActivities>();
+            // objActivity = objTransactionRec.GetActivities(2);
+            ViewBag.ActivityCombo = new SelectList(objActivity, "TransactionId", "ActivityTypeDescription");
+            IList<ProductTypeMasterDTO> listproducts = new List<ProductTypeMasterDTO>();
+            //listproducts = passvoucherIL.GetProductTypeDetailsforDTO();
+            ViewBag.Modulelist = new SelectList(listproducts, "ProductTypeID", "ProductTypeDescription");
+            //decimal OpeningBalance = objTransactionRec.GetOpeningCashBalance(usercredentials.PacsId, usercredentials.BranchId, Convert.ToDateTime(usercredentials.Logindatetime).AddDays(1));
+            object[] objparameterslist1 = new object[1];
+            objparameterslist1[0] = usercredentials ;
+            Type[] types1 = new Type[1];
+            types1[0] = typeof(UserCredentials);
+            decimal OpeningBalance = (decimal)ServiceInvoker.MethodInvoke<TransactionIL>(objTransactionRec, "GetOpeningCashBalance", types1, objparameterslist1);
+            ViewBag.cashbalance = OpeningBalance;
+            ViewBag.logindate = usercredentials.Logindatetime.ToString("yyyy-MM-dd");
+            ViewBag.FormID = formid;
+            ViewBag.Posted = 2;
+            //string denominationDetails = objcommAL.GetParameterValue(usercredentials);
+            object[] objparameterslist = new object[1];
+            objparameterslist[0] = usercredentials;
+            Type[] types = new Type[1];
+            types[0] = typeof(UserCredentials);
+            string denominationDetails = (string)ServiceInvoker.MethodInvoke<ICommonFasIl>(objcommAL, "GetParameterValue", types, objparameterslist);
+            ViewBag.denomination = denominationDetails;
+            XmlDocument doc = new XmlDocument();
+            ViewBag.XMLDoc = doc;
+            IList<InvestTypeMaster> lstInvestType = new List<InvestTypeMaster>();
+            //lstInvestType = objInvestIL.GetInvestmentMasterListWithParameters(usercredentials.PacsId, usercredentials.BranchId);
+            object[] objparameters = new object[2];
+            objparameters[0] = usercredentials.PacsId;
+            objparameters[1] = usercredentials.BranchId;
+            Type[] types2 = new Type[2];
+            types2[0] = typeof(long);
+            types2[1] = typeof(int);
+            lstInvestType = (IList<InvestTypeMaster>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objInvestIL, "GetInvestmentMasterListWithParameters", types2, objparameters);
+            lstInvestType.Select(i =>
+            {
+                if (culture != "" && culture != "en-GB")
+                {
+                    if (!string.IsNullOrEmpty(i.InvestTypeDescriptionRegional))
+                    {
+                        i.InvestTypeDescription = i.InvestTypeDescriptionRegional;
+                    }
+                    else
+                    {
+                        i.InvestTypeDescription = i.InvestTypeDescription;
+                    }
+                }
+                else
+                {
+                    i.InvestTypeDescription = i.InvestTypeDescription;
+                }
+                return i;
+            }).ToList();
+
+            // Code Added by Sunil
+            if (formid == 16007)
+            {
+                lstInvestType = lstInvestType
+                                                .Where(item => item.TypeOfInvest == 3)
+                                                .OrderBy(item => item.InvestTypeDescription)
+                                                .ToList();
+            }
+            else
+            {
+                lstInvestType = lstInvestType
+                                               .Where(item => item.TypeOfInvest != 3)
+                                               .OrderBy(item => item.InvestTypeDescription)
+                                               .ToList();
+            }
+
+            ViewBag.lstInvestType = new SelectList(lstInvestType, "InvestTypeID", "InvestTypeDescription");
+            IList<BankTypeMaster> lstBankTypeMaster = new List<BankTypeMaster>();
+            //lstBankTypeMaster = objInvestIL.GetBankTypeMasterDtls();
+            lstBankTypeMaster = (IList<BankTypeMaster>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objInvestIL, "GetBankTypeMasterDtls", null, null);
+            lstBankTypeMaster.Select(i =>
+            {
+                if (culture != "" && culture != "en-GB")
+                {
+                    if (!string.IsNullOrEmpty(i.BankTypeRegionalDescription))
+                    {
+                        i.BankTypeDescription = i.BankTypeRegionalDescription;
+                    }
+                    else
+                    {
+                        i.BankTypeDescription = i.BankTypeDescription;
+                    }
+                }
+                else
+                {
+                    i.BankTypeDescription = i.BankTypeDescription;
+                }
+                return i;
+            }).ToList();
+            ViewBag.ListBankType = new SelectList(lstBankTypeMaster, "BankTypeId", "BankTypeDescription");
+            IList<BankMaster> BankMasterList = new List<BankMaster>();
+            ViewBag.lstBankMaster = new SelectList(BankMasterList, "BankId", "BankName");
+            IList<BankBranchMaster> BankBranchMasterList = new List<BankBranchMaster>();
+            ViewBag.lstBankBranchMaster = new SelectList(BankBranchMasterList, "SlNo", "BranchName");
+            IList<string> InvestList = new List<string>();
+            ViewBag.lstAccountNo = new SelectList(InvestList, "", "");
+        }
+        [HandleError]
+        public JsonResult GetProductDetailsBasedOnAccount(string AccountNo, int formid)
+        {
+            try
+            {
+                IList<ProductTypeMasterDTO> listProductMaster = new List<ProductTypeMasterDTO>();
+                IList<InvestTypeMaster> lstInvestType = new List<InvestTypeMaster>();
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                var result = new { object1 = listProductMaster };
+                if (AccountNo != null)
+                {
+                    //lstInvestType = objInvestIL.GetInvestTypeMasterHavingAccounts();
+                    //ViewBag.lstInvestType = new SelectList(lstInvestType, "InvestTypeID", "InvestTypeDescription");
+                    listProductMaster = objTransactionRec.GetProductTypeDetailsByAccount(AccountNo, usercredentials.PacsId, usercredentials.BranchId, formid);
+                    listProductMaster.Select(i =>
+                    {
+                        if (culture != "" && culture != "en-GB")
+                        {
+                            if (!string.IsNullOrEmpty(i.ProductTypeRegional))
+                            {
+                                i.ProductTypeDescription = i.ProductTypeRegional;
+                            }
+                            else
+                            {
+                                i.ProductTypeDescription = i.ProductTypeDescription;
+                            }
+                        }
+                        else
+                        {
+                            i.ProductTypeDescription = i.ProductTypeDescription;
+                        }
+                        return i;
+                    }).ToList();
+                    ViewBag.productlist = new SelectList(listProductMaster, "ProductTypeID", "ProductTypeDescription");
+                    HttpContext.Session.SetSessionData("AccountDetails", null);
+                    result = new { object1 = listProductMaster };
+                }
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(false);
+            }
+        }
+        public JsonResult GetAccountCodeByTempAcc(string TempAccNo)
+        {
+            try
+            {
+                UserCredentials obj = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                string accNo = objInvestIL.GetAccountCodeByTempAcc(TempAccNo, 34, obj.PacsId, obj.BranchId);
+                return Json(accNo);
+            }
+            catch (Exception ex)
+            {
+                return Json("");
+            }
+        }
+        [HandleError]
+        public JsonResult GetAllAccountsByProductcode(int productId, string accountNo, int FormID, long investType)
+        {
+            try
+            {
+                IList<AccountDetails> listAccountDetails = new List<AccountDetails>();
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                if (productId != 0 && accountNo != null)
+                {
+                    //listAccountDetails = objTransactionRec.GetAccountDetailsByProductAndAccount(accountNo, productId, usercredentials.PacsId, usercredentials.BranchId);
+                    object[] objparameterslist5 = new object[4];
+                    objparameterslist5[0] = accountNo;
+                    objparameterslist5[1] = productId;
+                    objparameterslist5[2] = usercredentials.PacsId;
+                    objparameterslist5[3] = usercredentials.BranchId;
+                    Type[] types5 = new Type[4];
+                    types5[0] = typeof(String);
+                    types5[1] = typeof(Int32);
+                    types5[2] = typeof(Int64);
+                    types5[3] = typeof(Int32);
+                    listAccountDetails = (IList<AccountDetails>)ServiceInvoker.MethodInvoke<TransactionIL>(objTransactionRec, "GetAccountDetailsByProductAndAccount", types5, objparameterslist5);
+                    ViewBag.AccountNoList = new SelectList(listAccountDetails, "AccountID", "AccountCode");
+                }
+                IList<ProductTypeWiseActivity> objActivityType = new List<ProductTypeWiseActivity>();
+                IList<SWModuleOtherCharges> objSWModuleOtherCharges = new List<SWModuleOtherCharges>();
+                if (productId != 0)
+                {
+                    string accountno = string.Empty;
+                    if (listAccountDetails != null && listAccountDetails.Count > 0)
+                    {
+                        accountno = listAccountDetails[0].AccountCode;
+                    }
+                    //objActivityType = objTransactionRec.GetTransactionDetailsByProductCodeForAccountBasedTrans(productId, "R", FormID);
+                    object[] objparameterslist2 = new object[3];
+                    objparameterslist2[0] = productId;
+                    objparameterslist2[1] = "R";
+                    objparameterslist2[2] = FormID;
+                    Type[] types2 = new Type[3];
+                    types2[0] = typeof(Int32);
+                    types2[1] = typeof(String);
+                    types2[2] = typeof(Int32);
+                    objActivityType = (IList<ProductTypeWiseActivity>)ServiceInvoker.MethodInvoke<TransactionIL>(objTransactionRec, "GetTransactionDetailsByProductCodeForAccountBasedTrans", types2, objparameterslist2);
+                    objActivityType.Select(i =>
+                    {
+                        if (culture != "" && culture != "en-GB")
+                        {
+                            if (!string.IsNullOrEmpty(i.Activities.ActivityDescriptionRegional))
+                            {
+                                i.Activities.ActivityDescription = i.Activities.ActivityDescriptionRegional;
+                            }
+                            else
+                            {
+                                i.Activities.ActivityDescription = i.Activities.ActivityDescription;
+                            }
+                        }
+                        else
+                        {
+                            i.Activities.ActivityDescription = i.Activities.ActivityDescription;
+                        }
+                        return i;
+                    }).ToList();
+                    ViewBag.ListOfActivity = new SelectList(objActivityType, "SWTransPKey", "ActivityTypeDescription");
+                    //objSWModuleOtherCharges = objTransactionRec.GetSWModuleOtherChargesByProductCode(productId, usercredentials.PacsId, usercredentials.BranchId, culture);
+                    object[] objparameterslist3 = new object[4];
+                    objparameterslist3[0] = productId;
+                    objparameterslist3[1] = usercredentials.PacsId;
+                    objparameterslist3[2] = usercredentials.BranchId;
+                    objparameterslist3[3] = culture;
+                    Type[] types3 = new Type[4];
+                    types3[0] = typeof(Int32);
+                    types3[1] = typeof(Int64);
+                    types3[2] = typeof(Int32);
+                    types3[3] = typeof(String);
+                    objSWModuleOtherCharges = (IList<SWModuleOtherCharges>)ServiceInvoker.MethodInvoke<TransactionIL>(objTransactionRec, "GetSWModuleOtherChargesByProductCode", types3, objparameterslist3);
+                    objSWModuleOtherCharges.Select(i =>
+                    {
+                        if (culture != "" && culture != "en-GB")
+                        {
+                            if (!string.IsNullOrEmpty(i.LedgerDescriptionRegional))
+                            {
+                                i.LedgerDescription = i.LedgerDescriptionRegional;
+                            }
+                            else
+                            {
+                                i.LedgerDescription = i.LedgerDescription;
+                            }
+                        }
+                        else
+                        {
+                            i.LedgerDescription = i.LedgerDescription;
+                        }
+                        return i;
+                    }).ToList();
+                    ViewBag.listOfOtherCharges = new SelectList(objSWModuleOtherCharges, "LedgerID", "LedgerDescription");
+                }
+                HttpContext.Session.SetSessionData("AccountDetails", listAccountDetails);
+                ViewBag.AccountNoList = listAccountDetails;
+                ViewBag.ListOfActivity = objActivityType;
+                ViewBag.listOfOtherCharges = objSWModuleOtherCharges;
+                //string deposittype = objInvestIL.GetDepositType(accountNo, usercredentials.PacsId, usercredentials.BranchId);
+                object[] objparameterslist = new object[3];
+                objparameterslist[0] = accountNo;
+                objparameterslist[1] = usercredentials.PacsId;
+                objparameterslist[2] = usercredentials.BranchId;
+                Type[] types = new Type[3];
+                types[0] = typeof(String);
+                types[1] = typeof(Int64);
+                types[2] = typeof(Int32);
+                string deposittype = (string)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objInvestIL, "GetDepositType", types, objparameterslist);
+                var result = new { data = listAccountDetails, data2 = objActivityType, data3 = objSWModuleOtherCharges, data4 = deposittype };
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(false);
+            }
+        }
+        [HandleError]
+        public JsonResult GetVoucherPrepareDetails(int TransactionType, string AccountCode, int productId, long activityId, int? formid, long InvestType, int? NoOfRDInstallments)
+        {
+            DataTable dterrorslist = new DataTable();
+            IList<ErrorsList> errorslist = new List<ErrorsList>();
+            string ErrorMessage = string.Empty;
+            long Financeactvityid = 0;
+            IList<TransactionTypeMasterDTO> objSWTransrollMapping = new List<TransactionTypeMasterDTO>();
+            try
+            {
+                int Missingformid = Convert.ToInt32(HttpContext.Session.GetSessionData<int>("MissingFormid"));
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                if (usercredentials == null)
+                {
+                    return null;
+                }
+                //var ObjMemberstrip = objTransactionRec.GetMemberstripDTO(AdmissionNo, usercredentials.PacsId, usercredentials.BranchId,usercredentials.Logindatetime);
+                string culture = "";
+                if (HttpContext == null || HttpContext.Session.GetString("culture") == null)
+                {
+                    culture = "en-GB";
+                }
+                else
+                {
+                    culture = (string)HttpContext.Session.GetSessionData<string>("culture");
+                }
+                objSWTransrollMapping = (IList<TransactionTypeMasterDTO>)HttpContext.Session.GetSessionData<IList<TransactionTypeMasterDTO>>("TransDetail");
+                if (TransactionType != 0 && productId != 0 && AccountCode != "")
+                {
+                    //Financeactvityid = objcommAL.GetFinancAcivityIdbyprodwiseactId(activityId, usercredentials);
+                    FormBodyDTO objFormBodyDTO = new FormBodyDTO();
+                    objFormBodyDTO.ProdWiseActivityId = activityId; 
+                    object[] objparameterslist = new object[2];
+                    objparameterslist[0] = objFormBodyDTO;
+                    objparameterslist[1] = usercredentials;
+                    Type[] types = new Type[2];
+                    types[0] = typeof(FormBodyDTO);
+                    types[1] = typeof(UserCredentials);
+                    long actvityid = (long)ServiceInvoker.MethodInvoke<ICommonFasIl>(objcommAL, "GetFinancAcivityIdbyprodwiseactId", types, objparameterslist);
+                    //var vresult = objTransactionRec.GetTransrollsByActivityidForAccountBasedTrans(TransactionType, usercredentials.PacsId, usercredentials.BranchId, productId, AccountCode, usercredentials.Logindatetime, usercredentials.UserLevel, usercredentials.StateId, usercredentials.DistrictId, formid.Value, InvestType, NoOfRDInstallments.Value, dterrorslist, culture);
+                    objparameterslist = new object[13];
+                    objparameterslist[0] = TransactionType;
+                    objparameterslist[1] = usercredentials.PacsId;
+                    objparameterslist[2] = usercredentials.BranchId;
+                    objparameterslist[3] = productId;
+                    objparameterslist[4] = AccountCode;
+                    objparameterslist[5] = usercredentials.Logindatetime;
+                    objparameterslist[6] = usercredentials.UserLevel;
+                    objparameterslist[7] = usercredentials.StateId;
+                    objparameterslist[8] = Convert.ToInt64(usercredentials.DistrictId);
+                    objparameterslist[9] = Convert.ToInt32(formid);
+                    objparameterslist[10] = InvestType;
+                    objparameterslist[11] = 0;// NoOfRDInstallments.Value;
+                    objparameterslist[12] = culture;
+                    //objparameterslist[13] = culture;
+                    //Type[] types = new Type[13];
+                    //types[0] = typeof(Int32);
+                    //types[1] = typeof(String);
+                    //types[2] = typeof(String);
+                    //types[3] = typeof(Int32);
+                    //types[5] = typeof(String);
+                    //types[6] = typeof(DateTime);
+                    //types[8] = typeof(Int32);
+                    //types[9] = typeof(Int32);
+                    //types[10] = typeof(Int64);
+                    //types[11] = typeof(Int32);
+                    //types[12] = typeof(String);
+                    //types[13] = typeof(Nullable<Int32>);
+                    //types[14] = typeof(Boolean);
+                    //types[15] = typeof(DataTable);
+                    //types[16] = typeof(String);
+                    var vresult = (Tuple<IList<TransactionTypeMasterDTO>, string, IList<Intellect.Unite.WebPackages.Loans.Model.OutStandingResults>>)ServiceInvoker.MethodInvoke<TransactionIL>(objTransactionRec, "GetTransrollsByActivityidForAccountBasedTrans", null, objparameterslist);
+                    errorslist = ConvertDatatabletoList(dterrorslist);
+                    if (Missingformid == 30021)
+                    {
+                        objSWTransrollMapping = vresult.Item1;
+                        ErrorMessage = string.Empty;
+                    }
+                    else
+                    {
+                        objSWTransrollMapping = vresult.Item1;
+                        ErrorMessage = vresult.Item2;
+                    }
+                }
+                HttpContext.Session.SetSessionData("TransDetail", objSWTransrollMapping);
+                var result = new { object1 = objSWTransrollMapping, object2 = ErrorMessage, object4 = Financeactvityid, object5 = errorslist };
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                var result = new { object1 = objSWTransrollMapping, object2 = ErrorMessage, object4 = Financeactvityid, object5 = errorslist };
+                return Json(result);
+            }
+        }
+        [HandleError]
+        public JsonResult GetOtherChargeDetails(long ledgercode, int productcode)
+        {
+            try
+            {
+                SWModuleOtherCharges listSWModuleOtherCharges = new SWModuleOtherCharges();
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                if (ledgercode != 0)
+                {
+                    //var otherslist = objTransactionRec.GetSWModuleOtherChargesByProductCode(productcode, usercredentials.PacsId, usercredentials.BranchId, culture);
+                    object[] objparameterslist = new object[4];
+                    objparameterslist[0] = productcode;
+                    objparameterslist[1] = usercredentials.PacsId;
+                    objparameterslist[2] = usercredentials.BranchId;
+                    objparameterslist[3] = culture;
+                    Type[] types = new Type[4];
+                    types[0] = typeof(Int32);
+                    types[1] = typeof(Int64);
+                    types[2] = typeof(Int32);
+                    types[3] = typeof(String);
+                    var otherslist = (IList<SWModuleOtherCharges>)ServiceInvoker.MethodInvoke<TransactionIL>(objTransactionRec, "GetSWModuleOtherChargesByProductCode", types, objparameterslist);
+                    if (otherslist != null && otherslist.Count > 0)
+                    {
+                        listSWModuleOtherCharges = otherslist.Where(i => i.LedgerID == ledgercode).SingleOrDefault<SWModuleOtherCharges>();
+                    }
+                    else
+                    {
+                        return Json(false);
+                    }
+                }
+                return Json(listSWModuleOtherCharges);
+            }
+            catch (Exception ex)
+            {
+                return Json(false);
+            }
+        }
+        [HandleError]
+        public JsonResult GetPendingLastTransaction(long AccountCode, int productId)
+        {
+            try
+            {
+                bool status = true;
+                string message = "";
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                VoucherMainTemp objVchrTemp = new VoucherMainTemp();
+                Tuple<Nullable<DateTime>, string> Trdate = null;
+                Nullable<DateTime> Trdates = null;
+                Nullable<DateTime> openingdate = null;
+                Nullable<long> voucherno = 0;
+                string oldAccountNo = string.Empty;
+                bool IsValidDateTime = false;
+                if (productId != 0 && AccountCode != 0)
+                {
+                    int Missingformid = Convert.ToInt32(HttpContext.Session.GetSessionData<int>("MissingFormid"));
+                    //openingdate = objTransactionRec.GetAccountOpeningDateByAccountPkey(AccountCode, usercredentials.Logindatetime);
+                    object[] objparameterslist = new object[2];
+                    objparameterslist[0] = AccountCode;
+                    objparameterslist[1] = usercredentials.Logindatetime;
+                    Type[] types = new Type[2];
+                    types[0] = typeof(Int64);
+                    types[1] = typeof(DateTime);
+                    openingdate = (Nullable<DateTime>)ServiceInvoker.MethodInvoke<TransactionIL>(objTransactionRec, "GetAccountOpeningDateByAccountPkey", types, objparameterslist);
+                    //var vchrNO = objTransactionRec.GetPendingVchrNo(productId, AccountCode, usercredentials.PacsId, usercredentials.BranchId);
+                    objparameterslist = new object[4];
+                    objparameterslist[0] = productId;
+                    objparameterslist[1] = AccountCode;
+                    objparameterslist[2] = usercredentials.PacsId;
+                    objparameterslist[3] = usercredentials.BranchId;
+                    types = new Type[4];
+                    types[0] = typeof(Int32);
+                    types[1] = typeof(Int64);
+                    types[2] = typeof(Int64);
+                    types[3] = typeof(Int32);
+                    var vchrNO = (Tuple<long, string>)ServiceInvoker.MethodInvoke<TransactionIL>(objTransactionRec, "GetPendingVchrNo", types, objparameterslist);
+                    if (vchrNO.Item1 != 0)
+                    {
+                        status = false;
+                    }
+                    message = vchrNO.Item2;
+                    voucherno = vchrNO.Item1;
+                    //Trdate = objTransactionRec.GetLastTransactionDate(productId, AccountCode, usercredentials.PacsId, usercredentials.BranchId);
+                    //Trdate = objTransactionRec.GetLastTransactionDate(productId, AccountCode, usercredentials.PacsId, usercredentials.BranchId);
+                    //var trdateandledgerfolio = objTransactionRec.GetLastTransactionDate(productId, AccountCode, usercredentials.PacsId, usercredentials.BranchId);
+                    objparameterslist = new object[4];
+                    objparameterslist[0] = productId;
+                    objparameterslist[1] = AccountCode;
+                    objparameterslist[2] = usercredentials.PacsId;
+                    objparameterslist[3] = usercredentials.BranchId;
+                    types = new Type[4];
+                    types[0] = typeof(Int32);
+                    types[1] = typeof(Int64);
+                    types[2] = typeof(Int64);
+                    types[3] = typeof(Int32);
+                    var trdateandledgerfolio = (Tuple<DateTime?, string>)ServiceInvoker.MethodInvoke<TransactionIL>(objTransactionRec, "GetLastValueDate", types, objparameterslist);
+                    Trdates = trdateandledgerfolio.Item1;
+                    if (HttpContext.Session.GetSessionData<IList<AccountDetails>>("AccountDetails") != null)
+                    {
+                        var accdetails = (IList<AccountDetails>)HttpContext.Session.GetSessionData<IList<AccountDetails>>("AccountDetails");
+                        if (accdetails != null && accdetails.Count > 0)
+                        {
+                            var singleacc = accdetails.Where(i => i.AccountID == AccountCode && i.ProductID.Slno == productId).ToList();
+                            if (singleacc != null && singleacc.Count > 0)
+                            {
+                                oldAccountNo = singleacc.FirstOrDefault().TempAccountNo;
+                            }
+                        }
+                    }
+                    if (Missingformid == 30021)
+                    {
+                        IsValidDateTime = true;
+                    }
+                    else
+                    {
+                        if (Trdates > usercredentials.Logindatetime)
+                        {
+                            IsValidDateTime = false;
+                        }
+                        else
+                        {
+                            IsValidDateTime = true;
+                        }
+                    }
+                    // bool Voucherapprovalstatus=objTransactionRec.GetV
+                    //ViewBag.Transactiondate = Trdate;
+                }
+                var result = new { data3 = status, data4 = Trdates, data5 = openingdate, data6 = voucherno, data7 = oldAccountNo, data8 = message, data9 = IsValidDateTime, data10 = string.Empty };
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(false);
+            }
+        }
+        [HandleError]
+        public JsonResult GetBatchID()
+        {
+            try
+            {
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                //long BATCHID = objTransfersIL.GetMaxBatchNumber(usercredentials.UserUniqueNumber, usercredentials.PacsId, usercredentials.BranchId);
+                object[] objprmGetMaxBatchNumber = new object[3];
+                objprmGetMaxBatchNumber[0] = usercredentials.UserUniqueNumber;
+                objprmGetMaxBatchNumber[1] = usercredentials.PacsId;
+                objprmGetMaxBatchNumber[2] = usercredentials.BranchId;
+                Type[] typeGetMaxBatchNumber = new Type[3];
+                typeGetMaxBatchNumber[0] = typeof(String);
+                typeGetMaxBatchNumber[1] = typeof(Int64);
+                typeGetMaxBatchNumber[2] = typeof(Int32);
+                long BATCHID = (long)ServiceInvoker.MethodInvoke<ITransfersIL>(objTransfersIL, "GetMaxBatchNumber", typeGetMaxBatchNumber, objprmGetMaxBatchNumber);
+                return Json(BATCHID);
+            }
+            catch (Exception ex)
+            {
+                return Json(false);
+            }
+        }
+        [HandleError]
+        public JsonResult GetCashbalance()
+        {
+            try
+            {
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                //decimal OpeningBalance = objTransactionRec.GetOpeningCashBalance(usercredentials.PacsId, usercredentials.BranchId, usercredentials.Logindatetime.AddDays(1));
+                object[] objparameterslist1 = new object[1];
+                objparameterslist1[0] = usercredentials ;
+                Type[] types1 = new Type[1];
+                types1[0] = typeof(UserCredentials);
+                decimal OpeningBalance = (decimal)ServiceInvoker.MethodInvoke<TransactionIL>(objTransactionRec, "GetOpeningCashBalance", types1, objparameterslist1);
+                return Json(OpeningBalance);
+            }
+            catch (Exception ex)
+            {
+                return Json(false);
+            }
+        }
+        private IList<SWRulesValidationMaster> CreateRules(TransactionDTO objTransDto, long formid)
+        {
+            UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            XmlDocument xd = new XmlDocument();
+            xd.LoadXml(objTransDto.XML.ToString());
+            TransactionTypeMasterDTO obj;
+            IList<TransactionTypeMasterDTO> listTransaction = new List<TransactionTypeMasterDTO>();
+            XmlNodeList xnList = xd.SelectNodes("/Temp/row");
+            foreach (XmlNode xn in xnList)
+            {
+                obj = new TransactionTypeMasterDTO();
+                obj.Ledger = Convert.ToInt64(xn["LedgerID"].InnerText);
+                obj.LedgerDescription = xn["LedgerDescription"].InnerText;
+                obj.TransrollID = Convert.ToInt32(xn["TransrollID"].InnerText);
+                obj.TransrollDescription = xn["TransrollDescription"].InnerText;
+                if (xn["Amount"].InnerText != null)
+                {
+                    obj.Amount = Convert.ToDecimal(xn["Amount"].InnerText);
+                }
+                else
+                {
+                    obj.Amount = 0;
+                }
+                listTransaction.Add(obj);
+            }
+            IList<SWRulesValidationMaster> Rulesvalidation = new List<SWRulesValidationMaster>(); //objTransactionRec.GetValidations(objTransDto, usercredentials.PacsId, usercredentials.BranchId, usercredentials.Logindatetime, usercredentials.UserLevel, usercredentials.StateId, usercredentials.DistrictId,);
+            foreach (SWRulesValidationMaster rules in Rulesvalidation)
+            {
+                foreach (TransactionTypeMasterDTO trans in listTransaction)
+                {
+                    if (rules.TransrollID == trans.TransrollID && rules.TempValue == "")
+                    {
+                        rules.TempValue = Convert.ToString(trans.Amount);
+                    }
+                }
+            }
+            return Rulesvalidation;
+        }
+        [HandleError]
+        public JsonResult GetActivityId(long activityid)
+        {
+            UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            //long actvityid = objcommAL.GetFinancAcivityIdbyprodwiseactId(activityid, usercredentials);
+            FormBodyDTO objFormBodyDTO = new FormBodyDTO();
+            objFormBodyDTO.ProdWiseActivityId = activityid; 
+            object[] objparameterslist = new object[2];
+            objparameterslist[0] = objFormBodyDTO;
+            objparameterslist[1] = usercredentials;
+            Type[] types = new Type[2];
+            types[0] = typeof(FormBodyDTO);
+            types[1] = typeof(UserCredentials);
+            long actvityid = (long)ServiceInvoker.MethodInvoke<ICommonFasIl>(objcommAL, "GetFinancAcivityIdbyprodwiseactId", types, objparameterslist);
+            return Json(actvityid);
+        }
+        [HttpGet]
+        //[ValidateInput(false)]
+        [HandleError]
+        [Audit(command = "Get")]
+        public JsonResult GetLastPostTransactionDetails(string XML, long AccountId)
+        {
+            string message = "";
+            UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            if (usercredentials == null)
+            {
+                return null;
+            }
+            string culture = "";
+            if (HttpContext == null || HttpContext.Session.GetString("culture") == null)
+            {
+                culture = "en-GB";
+            }
+            else
+            {
+                culture = (string)HttpContext.Session.GetSessionData<string>("culture");
+            }
+            //var accountid = objInvestIL.GetAccountCodePkey(Convert.ToString(AccountId), usercredentials.PacsId, usercredentials.BranchId);
+            FormBodyDTO ObjFormBodyDTO = new FormBodyDTO();
+            ObjFormBodyDTO.AccountCode =Convert.ToString(AccountId);
+            ObjFormBodyDTO.PacsId = usercredentials.PacsId;
+            ObjFormBodyDTO.BranchID = usercredentials.BranchId;
+            object[] objparameterslist1 = new object[1];
+            objparameterslist1[0] = ObjFormBodyDTO;
+            Type[] types1 = new Type[1];
+            types1[0] = typeof(FormBodyDTO);
+            var accountid = (long)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objInvestIL, "GetAccountCodePkey", types1, objparameterslist1);
+            //var details = objTransactionRec.GetLastTransactionStatusByLedgercodeandAccountcode(null, usercredentials.PacsId, usercredentials.BranchId, usercredentials.Logindatetime, accountid, culture);
+            TransactionDTO transactionDTO = new TransactionDTO();
+            transactionDTO.XML = XML;
+            object[] objparameterslist = new object[6];
+            objparameterslist[0] = transactionDTO;
+            objparameterslist[1] = usercredentials.PacsId;
+            objparameterslist[2] = usercredentials.BranchId;
+            objparameterslist[3] = usercredentials.Logindatetime;
+            objparameterslist[4] = accountid;
+            objparameterslist[5] = culture;
+            Type[] types = new Type[6];
+            types[0] = typeof(TransactionDTO);
+            types[1] = typeof(Int64);
+            types[2] = typeof(Int32);
+            types[3] = typeof(DateTime);
+            types[4] = typeof(Int64);
+            types[5] = typeof(String);
+            var details = (IList<ScrollRecordsDTO>)ServiceInvoker.MethodInvoke<TransactionIL>(objTransactionRec, "GetLastTransactionStatusByLedgercodeandAccountcode", types, objparameterslist);
+            XmlDocument obj = new XmlDocument();
+            obj.LoadXml(XML);
+            XmlNode xmlNode = obj.GetElementsByTagName("Amount")[0];
+            string Amount = xmlNode.InnerText;
+            PDFGenerationHelper pDFGenerationHelper = new PDFGenerationHelper();
+            details[0].AmountInWords = resFasLables.CurrentTransaction + "  " + pDFGenerationHelper.RupeesNPaise(Convert.ToDouble(Amount));
+            return Json(details);
+        }
+        public IList<ErrorsList> ConvertDatatabletoList(DataTable dterrorslist)
+        {
+            List<ErrorsList> errorslist = new List<ErrorsList>();
+            for (int i = 0; i < dterrorslist.Rows.Count; i++)
+            {
+                ErrorsList error = new ErrorsList();
+                error.AdmissionNo = Convert.ToString(dterrorslist.Rows[i]["AdmissionNo"]);
+                error.LoanNo = Convert.ToString(dterrorslist.Rows[i]["LoanNo"]); ;
+                error.ProductDescription = Convert.ToString(dterrorslist.Rows[i]["ProductName"]); ;
+                error.ErrorDescription = Convert.ToString(dterrorslist.Rows[i]["ErrorDescription"]); ;
+                errorslist.Add(error);
+            }
+            return errorslist;
+        }
+        public JsonResult GetBankDetails(long bankType)
+        {
+            IList<BankMaster> BankMasterList = new List<BankMaster>();
+            UserCredentials objUserCredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            //BankMasterList = objInvestIL.GetBankDetailsByBankType(bankType, objUserCredentials.PacsId, objUserCredentials.BranchId);
+            object[] objparameters = new object[3];
+            objparameters[0] = bankType;
+            objparameters[1] = objUserCredentials.PacsId;
+            objparameters[2] = objUserCredentials.BranchId;
+            Type[] types = new Type[3];
+            types[0] = typeof(Int64);
+            types[1] = typeof(Int64);
+            types[2] = typeof(Int32);
+            BankMasterList = (IList<BankMaster>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objInvestIL, "GetBankDetailsByBankType", types, objparameters);
+            var result = new { object1 = BankMasterList };
+            return Json(result);
+        }
+        public JsonResult GetBankBranchDetails(long bankId)
+        {
+            IList<BankBranchMaster> BankBranchMasterList = new List<BankBranchMaster>();
+            UserCredentials objUserCredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            //BankBranchMasterList = objInvestIL.GetBankBranchMasterList(bankId, objUserCredentials.PacsId, objUserCredentials.BranchId);
+            object[] objparameters = new object[3];
+            objparameters[0] = bankId;
+            objparameters[1] = objUserCredentials.PacsId;
+            objparameters[2] = objUserCredentials.BranchId;
+            Type[] types = new Type[3];
+            types[0] = typeof(Int64);
+            types[1] = typeof(Int64);
+            types[2] = typeof(Int32);
+            BankBranchMasterList = (IList<BankBranchMaster>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objInvestIL, "GetBankBranchMasterList", types, objparameters);
+            var result = new { object1 = BankBranchMasterList };
+            return Json(result);
+        }
+        public JsonResult GetInvestmentAccDetails(long bankType, long bank, long bankBranch, long investmentType, long FormId)
+        {
+            #region
+            UserCredentials objUserCredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            IList<string> lstInvestAccNo = new List<string>();
+            if (FormId == 16003)
+            {
+                //lstInvestAccNo = objInvestIL.GetInvestmentAccountsForNonCumInvestPay(bankType, bank, bankBranch, investmentType, objUserCredentials.PacsId, objUserCredentials.BranchId);
+                object[] objparameters = new object[6];
+                objparameters[0] = bankType;
+                objparameters[1] = bank;
+                objparameters[2] = bankBranch;
+                objparameters[3] = investmentType;
+                objparameters[4] = objUserCredentials.PacsId;
+                objparameters[5] = objUserCredentials.BranchId;
+                Type[] types = new Type[6];
+                types[0] = typeof(Int64);
+                types[1] = typeof(Int64);
+                types[2] = typeof(Int64);
+                types[3] = typeof(Int64);
+                types[4] = typeof(Int64);
+                types[5] = typeof(Int32);
+                lstInvestAccNo = (IList<string>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objInvestIL, "GetInvestmentAccountsForNonCumInvestPay", types, objparameters);
+            }
+            if (FormId == 16004)
+            {
+                //lstInvestAccNo = objInvestIL.GetInvestmentAccountsClosure(bankType, bank, bankBranch, investmentType, objUserCredentials.Logindatetime, objUserCredentials.PacsId, objUserCredentials.BranchId);
+                object[] objparameters = new object[7];
+                objparameters[0] = bankType;
+                objparameters[1] = bank;
+                objparameters[2] = bankBranch;
+                objparameters[3] = investmentType;
+                objparameters[4] = objUserCredentials.Logindatetime;
+                objparameters[5] = objUserCredentials.PacsId;
+                objparameters[6] = objUserCredentials.BranchId;
+                Type[] types = new Type[7];
+                types[0] = typeof(Int64);
+                types[1] = typeof(Int64);
+                types[2] = typeof(Int64);
+                types[3] = typeof(Int64);
+                types[4] = typeof(DateTime);
+                types[5] = typeof(Int64);
+                types[6] = typeof(Int32);
+                lstInvestAccNo = (IList<string>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objInvestIL, "GetInvestmentAccountsClosure", types, objparameters);
+            }
+            if (FormId == 16005)
+            {
+                IList<string> AccLst = null;
+                string message = "";
+                Tuple<IList<string>, string> lstInvestAcc = new Tuple<IList<string>, string>(AccLst, "");
+                //lstInvestAcc = objInvestIL.GetInvestmentAccountsForeclosure(bankType, bank, bankBranch, investmentType, objUserCredentials.Logindatetime, objUserCredentials.PacsId, objUserCredentials.BranchId);
+                object[] objparameters = new object[7];
+                objparameters[0] = bankType;
+                objparameters[1] = bank;
+                objparameters[2] = bankBranch;
+                objparameters[3] = investmentType;
+                objparameters[4] = objUserCredentials.Logindatetime;
+                objparameters[5] = objUserCredentials.PacsId;
+                objparameters[6] = objUserCredentials.BranchId;
+                Type[] types = new Type[7];
+                types[0] = typeof(Int64);
+                types[1] = typeof(Int64);
+                types[2] = typeof(Int64);
+                types[3] = typeof(Int64);
+                types[4] = typeof(DateTime);
+                types[5] = typeof(Int64);
+                types[6] = typeof(Int32);
+                lstInvestAcc = (Tuple<IList<string>, string>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objInvestIL, "GetInvestmentAccountsForeclosure", types, objparameters);
+                lstInvestAccNo = lstInvestAcc.Item1;
+            }
+            if (FormId == 16007)
+            {
+                //lstInvestAccNo = objInvestIL.GetInvestmentShareAccounts(bankType, bank, bankBranch, investmentType, objUserCredentials.PacsId, objUserCredentials.BranchId);
+                object[] objparameters = new object[7];
+                objparameters[0] = bankType;
+                objparameters[1] = bank;
+                objparameters[2] = bankBranch;
+                objparameters[3] = investmentType;
+                objparameters[4] = objUserCredentials.PacsId;
+                objparameters[5] = objUserCredentials.BranchId;
+                objparameters[6] = objUserCredentials.Logindatetime;
+                Type[] types = new Type[7];
+                types[0] = typeof(Int64);
+                types[1] = typeof(Int64);
+                types[2] = typeof(Int64);
+                types[3] = typeof(Int64);
+                types[4] = typeof(Int64);
+                types[5] = typeof(Int32);
+                types[6] = typeof(DateTime);
+                lstInvestAccNo = (IList<string>)ServiceInvoker.MethodInvoke<IInvestmentApplicationIL>(objInvestIL, "GetInvestmentShareAccounts", types, objparameters);
+            }
+            var result = new { object1 = lstInvestAccNo };
+            return Json(result);
+            #endregion
+            //UserCredentials objUserCredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+            //IList<string> AccLst = null;
+            //string message = "";
+            //Tuple<IList<string>, string> lstInvestAccNo = new Tuple<IList<string>, string>(AccLst, "");
+            //if (FormId == 16003)
+            //{
+            //    //lstInvestAccNo = objInvestIL.GetInvestmentAccountsForNonCumInvestPay(bankType, bank, bankBranch, investmentType, objUserCredentials.PacsId, objUserCredentials.BranchId);
+            //}
+            //if (FormId == 16004)
+            //{
+            //    //lstInvestAccNo = objInvestIL.GetInvestmentAccountsClosure(bankType, bank, bankBranch, investmentType, objUserCredentials.Logindatetime, objUserCredentials.PacsId, objUserCredentials.BranchId);
+            //}
+            //if (FormId == 16005)
+            //{
+            //    lstInvestAccNo = objInvestIL.GetInvestmentAccountsForeclosure(bankType, bank, bankBranch, investmentType, objUserCredentials.Logindatetime, objUserCredentials.PacsId, objUserCredentials.BranchId);
+            //}
+            //if (FormId == 16007)
+            //{
+            //    //lstInvestAccNo = objInvestIL.GetInvestmentShareAccounts(bankType, bank, bankBranch, investmentType, objUserCredentials.PacsId, objUserCredentials.BranchId);
+            //}
+            ////IList<string> AccLst = null;
+            ////string message = "";
+            //if (lstInvestAccNo.Item1.Count > 0)
+            //{
+            //    AccLst = lstInvestAccNo.Item1;
+            //    message = lstInvestAccNo.Item2;
+            //}
+            //var result = new { object1 = AccLst , object2=message };
+            //return Json(result);
+        }
+        [CustomErrors]
+        [HandleError]
+        public JsonResult GetContraProductByActivityTypeInvestments(int TransactionType, int productId)
+        {
+            try
+            {
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                IList<Ledger> plist = new List<Ledger>();
+                IList<Ledger> listcontraProductMaster = objTransactionRec.GetLedgerForDefaultTransfers(66, usercredentials.PacsId, usercredentials.BranchId);
+                listcontraProductMaster.Select(i =>
+                {
+                    if ((string)HttpContext.Session.GetSessionData<string>("culture") != "en-GB" && (string)HttpContext.Session.GetSessionData<string>("culture") != null)
+                    {
+                        if (i.LedgerDescription != null && !string.IsNullOrEmpty(i.LedgerDescription))
+                        {
+                            i.LedgerDescription = i.LedgerDescription;
+                        }
+                        else
+                        {
+                            i.LedgerDescription = i.LedgerDescription;
+                        }
+                    }
+                    else
+                    {
+                        i.LedgerDescription = i.LedgerDescription;
+                    }
+                    return i;
+                }).ToList();
+                //Issue: RegionaCaptionImpl, ModifiedOn:280719: To display Data in combo based on Regional culture 
+                listcontraProductMaster.Select(i =>
+                {
+                    if ((string)HttpContext.Session.GetSessionData<string>("culture") != "en-GB" && (string)HttpContext.Session.GetSessionData<string>("culture") != null)
+                    {
+                        if (i.LedgerDescription != null && !string.IsNullOrEmpty(i.LedgerDescription))
+                        {
+                            i.LedgerDescription = i.LedgerDescription;
+                        }
+                        else
+                        {
+                            i.LedgerDescription = i.LedgerDescription;
+                        }
+                    }
+                    else
+                    {
+                        i.LedgerDescription = i.LedgerDescription;
+                    }
+                    return i;
+                }).ToList();
+                ViewBag.Contraproductlist = new SelectList(listcontraProductMaster != null ? listcontraProductMaster : plist, "LedgerId", "LedgerDescription");
+                var result = new { data = listcontraProductMaster };
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(false);
+            }
+        }
+        [CustomErrors]
+        [HandleError]
+        public JsonResult GetContraAccountByActivityTypeInvestment(long productId, long ParentLedger)
+        {
+            try
+            {
+                UserCredentials usercredentials = (UserCredentials)HttpContext.Session.GetSessionData<UserCredentials>("Login");
+                IList<AccountDetailsTemp> listcontraAccountDetails = new List<AccountDetailsTemp>();
+                listcontraAccountDetails = objTransactionRec.GetAccountDetailsByProductIDInvestment(ParentLedger, Convert.ToInt32(productId), usercredentials.PacsId, usercredentials.BranchId);
+                ViewBag.ContraAccountNoList = new SelectList(listcontraAccountDetails, "AccountID", "AccountCode");
+                var result = new { data = listcontraAccountDetails };
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(false);
+            }
+        }
+    }
+}

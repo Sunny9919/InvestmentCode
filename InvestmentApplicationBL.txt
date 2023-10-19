@@ -1,0 +1,2690 @@
+﻿using Intellect.Unite.WebPackages.Mdm.BL;
+using log4net;
+using NHibernate;
+using Microsoft.Extensions.Configuration;
+using NHibernate.Context;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Intellect.Unite.WebPackages.Investment.Model;
+using Intellect.Unite.WebPackages.Mdm.Model;
+using Intellect.Unite.WebPackages.Investment.DTO;
+using Intellect.Unite.WebPackages.UserManagement.Model;
+using Intellect.Unite.WebPackages.FAS.Model;
+using Intellect.Unite.WebPackages.FAS.BL;
+using Intellect.Unite.WebPackages.DepositInterestCalculator.BL;
+using System.Data.SqlClient;
+using System.Data;
+using Intellect.Unite.WebPackages.Mdm.Model;
+using Intellect.Unite.WebPackages.VoucherProcessing.Model;
+using Intellect.UniteERP.MyResources.Investments;
+using Intellect.UniteERP.MyResources.TermDeposits;
+using System.Globalization;
+using System.Threading;
+namespace Intellect.Unite.WebPackages.Investment.BL 
+{
+    public class InvestmentApplicationBL : IDisposable
+    {
+        ILog log = LogManager.GetLogger(typeof(InvestmentApplicationBL));
+        ISession session;
+        
+        //public Intellect.Unite.WebPackages.UserManagement.Model.UserCredentials GlobalUserCredentials { get; set; }
+        public InvestmentApplicationBL()
+        {
+            var culture = CultureInfo.CreateSpecificCulture("en-GB");
+            var dbtype = Convert.ToInt32(new ConfigurationBuilder().AddJsonFile("appsettings.json", true, false).Build().GetSection("APIKeys:DBType").Value);
+            Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("en-GB");
+            Thread.CurrentThread.CurrentUICulture = Thread.CurrentThread.CurrentCulture;
+            var v = new System.Globalization.DateTimeFormatInfo();
+            if(dbtype == 1){v.ShortDatePattern = "dd/MM/yyyy";}else if(dbtype == 2){v.ShortDatePattern = "yyyy/MM/dd";}else{v.ShortDatePattern = "dd/MM/yyyy";}
+            Thread.CurrentThread.CurrentUICulture.DateTimeFormat = v;
+            CultureInfo.DefaultThreadCurrentCulture = culture;
+            CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat = v;
+            if (!CurrentSessionContext.HasBind(Intellect.Unite.WebPackages.Mdm.BL.SessionFactory.ISessionFactory))
+                CurrentSessionContext.Bind(Intellect.Unite.WebPackages.Mdm.BL.SessionFactory.ISessionFactory.OpenSession());
+            session = Intellect.Unite.WebPackages.Mdm.BL.SessionFactory.ISessionFactory.GetCurrentSession();
+            if (!session.IsOpen)
+            {
+                CurrentSessionContext.Bind(SessionFactory.ISessionFactory.OpenSession());
+                session = SessionFactory.ISessionFactory.GetCurrentSession();
+            }
+            //var str = NHibernateFactory.ISessionFactoryPool._sessionFactoryPool[Intellect.Unite.WebPackages.Framework.EndPointGenerator.Repository._ipAddress];
+            //session = str.OpenSession();
+        }
+        public InvestmentApplicationBL(ISession session)
+        {
+            var culture = CultureInfo.CreateSpecificCulture("en-GB");
+            var dbtype = Convert.ToInt32(new ConfigurationBuilder().AddJsonFile("appsettings.json", true, false).Build().GetSection("APIKeys:DBType").Value);
+            Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("en-GB");
+            Thread.CurrentThread.CurrentUICulture = Thread.CurrentThread.CurrentCulture;
+            var v = new System.Globalization.DateTimeFormatInfo();
+            if(dbtype == 1){v.ShortDatePattern = "dd/MM/yyyy";}else if(dbtype == 2){v.ShortDatePattern = "yyyy/MM/dd";}else{v.ShortDatePattern = "dd/MM/yyyy";}
+            Thread.CurrentThread.CurrentUICulture.DateTimeFormat = v;
+            CultureInfo.DefaultThreadCurrentCulture = culture;
+            CultureInfo.DefaultThreadCurrentCulture.DateTimeFormat = v;
+            this.session = session;
+        }
+
+        public void Dispose()
+        {
+            if (session.IsOpen)
+            {
+                session.Clear();
+                session.Close();
+                session.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// To get InvestmentMasterDetails.
+        /// <Author>Raj</Author>
+        /// <CreatedDate>11/08/2017</CreatedDate>
+        /// <FunctionName></FunctionName>
+        /// </summary>
+        /// <param name="productCode"></param>
+        /// <param name="fromDate"></param>
+        /// <param name="toDate"></param>
+        /// <param name="pacId"></param>
+        /// <param name="branchId"></param>
+        /// <returns></returns>
+        public IList<InvestTypeMaster> GetInvestmentMasterList()
+        {
+            log.Debug("Entering GetInvestmentMasterList");
+            IList<InvestTypeMaster> lstInvestTypeMaster = session.QueryOver<InvestTypeMaster>().List<InvestTypeMaster>();
+            log.Debug("Leaving GetInvestmentMasterList");
+            return lstInvestTypeMaster;
+        }
+
+        /// <summary>
+        ///  Purpose: To fill Investment deposit type master data.
+        /// </summary>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>16/08/2017</CreatedDate>
+        /// <FunctionName>GetInvestmentDepositTypeList</FunctionName>
+        /// </summary>
+        /// <param name=""></param>
+        /// <param name=""></param>
+        /// <returns></returns>
+        public IList<InvestmentDepositType> GetInvestmentDepositTypeList()
+        {
+            log.Debug("Entering GetInvestmentDepositTypeList");
+            IList<InvestmentDepositType> lstInvestmentDepositTyper = session.QueryOver<InvestmentDepositType>().List<InvestmentDepositType>();
+            log.Debug("Leaving GetInvestmentDepositTypeList");
+            return lstInvestmentDepositTyper;
+        }
+
+        /// <summary>
+        ///  Purpose: To get frequency type master data.
+        /// </summary>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>16/08/2017</CreatedDate>
+        /// <FunctionName>GetFrequncyTypeMasterList</FunctionName>
+        /// </summary>
+        /// <param name=""></param>
+        /// <param name=""></param>
+        /// <returns></returns>
+        public IList<FrequncyTypeMaster> GetFrequncyTypeMasterList()
+        {
+            log.Debug("Entering GetFrequncyTypeMasterList");
+            IList<FrequncyTypeMaster> lstFrequncyTypeMaster = session.QueryOver<FrequncyTypeMaster>().List<FrequncyTypeMaster>();
+            log.Debug("Leaving GetFrequncyTypeMasterList");
+            return lstFrequncyTypeMaster;
+        }
+
+        /// <summary>
+        ///  Purpose: To get frequency type master data.
+        /// </summary>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>16/08/2017</CreatedDate>
+        /// <FunctionName>GetAccountCodeByTempAcc</FunctionName>
+        /// </summary>
+        /// <param name="TempAccNo"></param>
+        /// <param name="productCode"></param>
+        /// <param name="pacId"></param>
+        /// <param name="branchId"></param>
+        /// <returns></returns>
+        public string GetAccountCodeByTempAcc(string TempAccNo, int productCode, long pacId, int branchId)
+        {
+            log.Debug("Entering GetAccountCodeByTempAcc");
+            string accCode = "";
+            IList<AccountDetails> lstAccountDetails = session.QueryOver<AccountDetails>().Where(i => i.TempAccountNo == TempAccNo && i.PacsId == pacId && i.BranchId == branchId && i.ProductID.Slno == productCode).List();
+            if (lstAccountDetails.Count > 0)
+            {
+                accCode = lstAccountDetails.FirstOrDefault().AccountCode;
+            }
+            log.Debug("Leaving GetAccountCodeByTempAcc");
+            return accCode;
+        }
+
+        /// <summary>
+        ///  Purpose: method to get non cumulative interest payments interest amount for investments.
+        /// </summary>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>16/08/2017</CreatedDate>
+        /// <FunctionName>GetNonCummulativeWithInterest</FunctionName>
+        /// </summary>
+        /// <param name="Principal"></param>
+        /// <param name="ROI"></param>
+        /// <param name="NoOfYears"></param>
+        /// <param name="NoOfMonths"></param>
+        /// <param name="NoOfDays"></param>
+        /// <param name="LintDuration"></param>
+        /// <param name="isRounding"></param>
+        /// <returns></returns>
+        public decimal GetNonCummulativeWithInterest(decimal Principal, decimal ROI, int NoOfYears, int NoOfMonths, int NoOfDays, int LintDuration, bool isRounding)
+        {
+            log.Debug("Entering GetNonCummulativeWithInterest");
+            decimal intAmt = 0.00m;
+            FDInterestCalculatorBL objInterestBL = new FDInterestCalculatorBL();
+            intAmt = objInterestBL.CalculateNonCummulativeFDWithInterest(Principal,ROI,NoOfYears,NoOfMonths,NoOfDays, LintDuration,isRounding,"N",false);            
+            log.Debug("Leaving GetNonCummulativeWithInterest");
+            return intAmt;
+        }
+
+        /// <summary>
+        ///  Purpose: method to get cumulative interest amount based on interest type for investments.
+        /// </summary>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>16/08/2017</CreatedDate>
+        /// <FunctionName>GetCumulativeIntBasedOnIntType</FunctionName>
+        /// </summary>
+        /// <param name="Principal"></param>
+        /// <param name="ROI"></param>
+        /// <param name="NoOfMonths"></param>
+        /// <param name="NoOfDays"></param>
+        /// <param name="InterestType"></param>
+        /// <param name="isRounding"></param>
+        /// <param name="InterestCalculationFrequency"></param>
+        /// <returns></returns>
+        public decimal GetCumulativeIntBasedOnIntType(decimal Principal, decimal ROI, int NoOfMonths, int NoOfDays, int InterestType, bool isRounding, int InterestCalculationFrequency)
+        {
+            log.Debug("Entering GetCumulativeIntBasedOnIntType");
+            decimal intAmt = 0.00m;
+            FDInterestCalculatorBL objInterestBL = new FDInterestCalculatorBL();
+            intAmt = objInterestBL.CalculateFDIntBasedOnIntType(Principal, ROI, NoOfMonths, NoOfDays, 2, true,0);
+            log.Debug("Leaving GetCumulativeIntBasedOnIntType");
+            return intAmt;
+        }
+
+        #region Save methods
+
+        /// <summary>
+        ///  Purpose:This is a test method to save investments details when new investment is created
+        /// </summary>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>16/08/2017</CreatedDate>
+        /// <FunctionName>SaveInvestmenttest</FunctionName>
+        /// </summary>
+        /// <param name="InvestmentApplicationDetailsMain"></param>      
+        /// <returns></returns>
+        public string[] SaveInvestmenttest(InvestmentApplicationDetailsMain objInvestmentApplicationDetailsMain)
+        {
+            log.Debug("Entering SaveInvestment");
+            string[] saveResult = new string[5];
+            try
+            {
+                using (var trans = session.BeginTransaction())
+                {
+                    //InvestmentApplicationDetails objInvestmentApplicationDetails = FillInvestmentAppDtls(objInvestmentApllicationDTO, usercredentials);                    
+                    session.SaveOrUpdate(objInvestmentApplicationDetailsMain);
+
+                    trans.Commit();
+                    saveResult[0] = true.ToString(); // To return true if data save.
+                }
+            }
+            catch (Exception ex)
+            {
+                saveResult[0] = false.ToString(); // To return true if data save.
+            }
+
+            log.Debug("Leaving SaveInvestment");
+            return saveResult;
+        }
+
+        /// <summary>
+        /// To Save Investment Application Details
+        /// <Author>Raj</Author>
+        /// <CreatedDate>16/08/2017</CreatedDate>
+        /// <FunctionName>SaveInvestment</FunctionName>
+        /// </summary>
+        /// <param name="objInvestmentApllicationDTO"></param>
+        /// <param name="usercredentials"></param>       
+        /// <returns></returns>
+        public string[] SaveInvestment(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials)
+        {
+            log.DebugFormat("Entering SaveInvestment for investment type {0}", objInvestmentApllicationDTO.TermInvestments.InvestmentID);
+            string[] saveResult = new string[5];
+            string InvAccountNo = "";
+            try
+            {
+                using (var trans = session.BeginTransaction())
+                {
+                    //InvestmentApplicationControlRecord objInvestmentApplicationControlRecord = SaveControlRecord(objTermApplicationDetailsDTO, objUserCredentials, "Capture", Convert.ToInt32(objTermApplicationDetailsDTO.formID));
+                    //objInvestmentApplicationControlRecord.Xml = "";// CreateXML(saledto, users).InnerXml;
+                    //objInvestmentApplicationControlRecord.IsApproved = Status;
+                    //objInvestmentApllicationDTO.TermInvestments.InvestedDate = usercredentials.Logindatetime;
+                    InvestmentApplicationDetailsMain objInvestmentApplicationDetailsMain = FillApplicationMain(objInvestmentApllicationDTO, usercredentials);
+                    session.Save(objInvestmentApplicationDetailsMain);
+                    //DailyActivityLog _dailyActivityLog = DailyActivityLog.CreateDailyActivityLog(usercredentials.UserName, usercredentials.Logindatetime, 16001, 19, 1, usercredentials.PacsId, usercredentials.BranchId, usercredentials.PACSSerialNumber);
+                    //session.Save(_dailyActivityLog);
+                    //int DepType = objInvestmentApllicationDTO.TermInvestments.DepositType;
+                    //if(DepType == 2)
+                    //{
+                    //    IList<InvestmentInterestPayments> ListInvestmentInterestPayments = FillInterestPayments(objInvestmentApllicationDTO, usercredentials, objInvestmentApplicationDetailsMain);
+                    //    if (ListInvestmentInterestPayments.Count > 0)
+                    //    {
+                    //        foreach (InvestmentInterestPayments intPay in ListInvestmentInterestPayments)
+                    //            session.Save(intPay);
+                    //    }
+                    //}
+                    if (objInvestmentApllicationDTO.TermInvestments.OBInterestAmount>0)
+                    {
+                        InvestmentInterestPosting objInvestmentInterestPosting = objInvestOBInterestFillInterestPosting(objInvestmentApllicationDTO, objInvestmentApplicationDetailsMain, usercredentials);
+                        session.Save(objInvestmentInterestPosting);
+                    }
+                    if (objInvestmentApllicationDTO.TermInvestments.InvestedDate <= usercredentials.CutOffDate)
+                    {
+                        if (objInvestmentApllicationDTO.ShareInvestments.ShareValue > 0)
+                        {
+                            InvAccountNo = objInvestmentApplicationDetailsMain.AccountNo;
+                            InvestmentShareTranscation objInvestShareDeposit = FillShareInvestmentsBackDate(objInvestmentApllicationDTO, usercredentials, objInvestmentApplicationDetailsMain.AccountCode);
+                            session.Save(objInvestShareDeposit);
+                        }
+                    }
+                    trans.Commit();
+                    
+                    saveResult[0] = true.ToString(); // To return true if data save.
+                }
+                if (InvAccountNo != "")
+                {
+                    using (var trans = session.BeginTransaction())
+                    {
+                        AccountDetails ac = session.QueryOver<AccountDetails>().Where(i => i.AccountCode == InvAccountNo && i.PacsId == usercredentials.PacsId && i.BranchId == usercredentials.BranchId).SingleOrDefault();
+
+                        InvestmentShareTranscation objshTran = session.QueryOver<InvestmentShareTranscation>().Where(i => i.InvestmentAccountNo == InvAccountNo && i.PacsId == usercredentials.PacsId && i.BranchId == usercredentials.BranchId).SingleOrDefault();
+                        objshTran.AccountCode = ac;
+                        session.Merge(objshTran);
+                        trans.Commit();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                saveResult[0] = false.ToString(); // To return true if data save.
+            }
+
+            log.Debug("Leaving SaveInvestment");            
+            return saveResult;
+        }
+
+        public InvestmentInterestPosting objInvestOBInterestFillInterestPosting(InvestmentApllicationDTO objInvestmentApllicationDTO, InvestmentApplicationDetailsMain objInvestmentApplicationDetailsMain, UserCredentials objUserCredentials)
+        {
+            InvestmentInterestPosting objInterestPostings = new InvestmentInterestPosting();
+            objInterestPostings.InvestmentAmount = objInvestmentApllicationDTO.TermInvestments.InvestedAmount;
+            objInterestPostings.BranchId = objUserCredentials.BranchId;
+            objInterestPostings.InvestmentNoPkey = objInvestmentApplicationDetailsMain.SlNoPkey;
+            objInterestPostings.InvestmentNo = objInvestmentApplicationDetailsMain.AccountNo;
+            objInterestPostings.InterestAmount = objInvestmentApllicationDTO.TermInvestments.OBInterestAmount;
+            objInterestPostings.InterestingPostingDate = Convert.ToDateTime(objUserCredentials.CutOffDate);
+            objInterestPostings.InterestReceivedDate = Convert.ToDateTime(objUserCredentials.CutOffDate); 
+            objInterestPostings.LastInterestPostedDate = Convert.ToDateTime(objUserCredentials.CutOffDate);
+            objInterestPostings.OutstandingAmount = objInvestmentApllicationDTO.TermInvestments.InvestedAmount + objInvestmentApllicationDTO.TermInvestments.OBInterestAmount;
+            objInterestPostings.PacId = objUserCredentials.PacsId;
+            objInterestPostings.ProductCode = 34;
+            objInterestPostings.Status = "Due";
+
+            objInterestPostings.TransactionDate = objUserCredentials.Logindatetime;
+
+            return objInterestPostings;
+        }
+        /// <summary>
+        /// To get max number For Application No.
+        /// </summary>
+        /// <param name="transactionDate"></param>
+        /// <param name="userName"></param>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>21/08/2017</CreatedDate>
+        /// <FunctionName>GetMaxSequenceNumberForApplication</FunctionName>
+        /// <ReturnType>string</ReturnType>
+        /// <DataBaseTables>Inv_InvestmentDetails</VoucherMain>
+        /// <ModifiedDate></ModifiedDate>
+        /// <ChangesForModification>BugId</ChangesForModification>
+        private string GetMaxSequenceNumberForApplication(long pacsId, int branchId)
+        {
+            log.DebugFormat(" Entering into GetMaxSequenceNumberForApplication");
+            string actualSequenceNumber;
+
+            #region
+            //string IsExicuteMultiUser = Intellect.Unite.WebPackages.Mdm.BL.MasterBL.GetStatusforExicuteMultiUserLogins();
+            //SqlConnection conn;// = new SqlConnection(Intellect.Unite.WebPackages.Framework.EndPointGenerator.Repository.dbConnectionString); //SqlConnection(System.Configuration.ConfigurationSettings.AppSettings.Get("conn"));
+            //if (IsExicuteMultiUser == "Y")
+            //{
+            //    string strNewConn = Intellect.Unite.WebPackages.Mdm.BL.MasterBL.GetPacsDBConnStringByPacsId(pacsId);
+            //    conn = new SqlConnection(strNewConn);
+            //}
+            //else
+            //{
+            //    conn = new SqlConnection(Intellect.Unite.WebPackages.Framework.ConnectDB.DBConnection.Conect());
+            //}
+            //if (conn.State == ConnectionState.Closed)
+            //{
+            //    conn.Open();
+            //}
+            //using (var trans = conn.BeginTransaction())
+            //{
+            //    SqlCommand cmd = new SqlCommand();
+            //    string query = string.Format("select max(accountNo) from Inv_InvestmentDetailsMain where PacsIDPkey='" + pacsId + "' and BranchIDPkey ='"+branchId+"'");
+            //    cmd.Connection = conn;
+            //    cmd.CommandText = query;
+            //    cmd.CommandType = CommandType.Text;
+            //    cmd.Transaction = trans;
+            //    object obj = cmd.ExecuteScalar();
+            //    string numberstr = obj.ToString();
+            //    //string[] numbers = number.Split('_');
+            //    if (numberstr.Length > 6)
+            //    {
+            //        numberstr = Reverse(numberstr);
+            //        numberstr = numberstr.Substring(0, 6);
+            //        numberstr = Reverse(numberstr);
+            //    }
+            //    else
+            //    {
+            //        numberstr = numberstr.PadLeft(6, '0');
+            //    }
+            //    long number = Convert.ToInt64(numberstr);
+            //    if (number > 0)
+            //        actualSequenceNumber = Convert.ToString(number);
+            //    else
+            //        actualSequenceNumber = "000001";
+
+            //    trans.Commit();
+            //    conn.Close();
+            //}
+            #endregion
+
+            #region
+            IList<InvestmentApplicationDetailsMain> objTDApplicationMain = new List<InvestmentApplicationDetailsMain>();
+            objTDApplicationMain = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.PacsIDPkey == pacsId && i.BranchIDPkey == branchId).List();
+            if (objTDApplicationMain.Count>0)
+            {
+                string numberstr = objTDApplicationMain.LastOrDefault().AccountNo.ToString();
+                //string[] numbers = number.Split('_');
+                if (numberstr.Length > 6)
+                {
+                    numberstr = Reverse(numberstr);
+                    numberstr = numberstr.Substring(0, 6);
+                    numberstr = Reverse(numberstr);
+                }
+                else
+                {
+                    numberstr = numberstr.PadLeft(6, '0');
+                }
+                long number = Convert.ToInt64(numberstr);
+                if (number > 0)
+                    actualSequenceNumber = Convert.ToString(number);
+                else
+                    actualSequenceNumber = "000001";
+            }
+            else
+                actualSequenceNumber = "000001";
+                #endregion
+
+                log.DebugFormat("Leaving GetMaxSequenceNumberForApplication, actualSequenceNumberDaily-{0}", actualSequenceNumber);
+            return actualSequenceNumber;
+        }
+
+        public string Reverse(string s)
+        {
+            char[] charArray = s.ToCharArray();
+            Array.Reverse(charArray);
+            return new string(charArray);
+        }
+
+        /// <summary>
+        /// To fill investment application details  main object. When new investment application is saving.
+        /// </summary>
+        /// <param name="objInvestmentApllicationDTO"></param>
+        /// <param name="usercredentials"></param>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>21/08/2017</CreatedDate>
+        /// <FunctionName>FillApplicationMain</FunctionName>
+        /// <ReturnType>string</ReturnType>
+        /// <DataBaseTables>Inv_InvestmentApplicationDetailsMain</VoucherMain>
+        /// <ModifiedDate></ModifiedDate>
+        /// <ChangesForModification>BugId</ChangesForModification>
+        public InvestmentApplicationDetailsMain FillApplicationMain(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials)
+        {
+            log.DebugFormat("Entering FillApplicationMain");
+            InvestmentApplicationDetailsMain objMain = new InvestmentApplicationDetailsMain();
+            long lastAccNo = (Convert.ToInt64(GetMaxSequenceNumberForApplication(usercredentials.PacsId, usercredentials.BranchId))) + 1;
+            string accountNoLatest = usercredentials.CBSID + objInvestmentApllicationDTO.TermInvestments.productCode.ToString().PadLeft(2, '0') + (lastAccNo).ToString().PadLeft(6, '0');//productcode.ToString().PadLeft(2, '0') + (Convert.ToInt64(accountno) + 1).ToString().PadLeft(6, '0');
+            log.DebugFormat("Entering FillInvestmentAppDtls for latest investment number {0}", accountNoLatest);
+            objInvestmentApllicationDTO.TermInvestments.AccountNo = accountNoLatest;
+            
+            objMain.AccountCode = new AccountDetails();
+            objMain.AccountCode = CreateAccount(objInvestmentApllicationDTO, usercredentials);
+            objMain.AccountNo = objInvestmentApllicationDTO.TermInvestments.AccountNo;
+
+            if (objInvestmentApllicationDTO.TermInvestments.InvestedAmount > 0)
+            {
+                objMain.Status = "P";
+                //objMain.StatusRegional = resInvestmentLables.P;
+            }
+            else
+            {
+                objMain.Status = "A";
+                //objMain.StatusRegional = resInvestmentLables.A;                
+            }  
+            if (objInvestmentApllicationDTO.TermInvestments.InvestedDate > usercredentials.CutOffDate)
+            {
+                objMain.AccountCode.OBDebitAmount = 0;
+            }
+            else
+            {
+                if (objInvestmentApllicationDTO.TermInvestments.InvestedAmount > 0)
+                {
+                    objMain.AccountCode.OBDebitAmount = objInvestmentApllicationDTO.TermInvestments.InvestedAmount;
+                    if (objInvestmentApllicationDTO.TermInvestments.OBInterestAmount > 0)
+                        objMain.AccountCode.OBDebitAmount = objInvestmentApllicationDTO.TermInvestments.InvestedAmount +objInvestmentApllicationDTO.TermInvestments.OBInterestAmount;
+                }
+                if (objInvestmentApllicationDTO.ShareInvestments.ShareValue > 0)
+                {
+                    objMain.AccountCode.OBDebitAmount = objInvestmentApllicationDTO.ShareInvestments.ShareValue;
+                }
+                objMain.Status = "A";                
+            }
+
+
+            objMain.BankType = new Mdm.Model.BankTypeMaster();
+            if (objInvestmentApllicationDTO.TermInvestments.BankType>0)
+                objMain.BankType.BankTypeId = objInvestmentApllicationDTO.TermInvestments.BankType;
+            else
+                objMain.BankType=null;
+            objMain.Bank = new Mdm.Model.BankMaster();
+            if (objInvestmentApllicationDTO.TermInvestments.Bank>0)
+                objMain.Bank.BankId = objInvestmentApllicationDTO.TermInvestments.Bank;
+            else
+                objMain.Bank=null;
+            objMain.BankBranch = new Mdm.Model.BankBranchMaster();
+            if (objInvestmentApllicationDTO.TermInvestments.Branch>0)
+                objMain.BankBranch.SlNo = objInvestmentApllicationDTO.TermInvestments.Branch;
+            else
+                objMain.BankBranch=null;
+
+            objMain.InvestmentTypeID = new InvestTypeMaster();
+            objMain.InvestmentTypeID.InvestTypeID = objInvestmentApllicationDTO.TermInvestments.InvestmentID;
+            objMain.InvestmentLocation = objInvestmentApllicationDTO.TermInvestments.InvestmentLocation;
+            objMain.ReferenceAccountNo = objInvestmentApllicationDTO.TermInvestments.ReferenceAccountNo;             
+            objMain.productCode = objInvestmentApllicationDTO.TermInvestments.productCode;
+            objMain.PacsIDPkey = usercredentials.PacsId;
+            objMain.BranchIDPkey = usercredentials.BranchId;
+            IList<InvestmentApplicationDetails> listTermApplicationDetails = new List<InvestmentApplicationDetails>();
+            InvestmentApplicationDetails objInvestmentApplicationDetails = new InvestmentApplicationDetails();
+            objInvestmentApplicationDetails = FillInvestmentAppDtls(objInvestmentApllicationDTO, usercredentials);
+            objInvestmentApplicationDetails.InvestAppPkey = objMain;
+            listTermApplicationDetails.Add(objInvestmentApplicationDetails);
+            objMain.InvestmentApplicationDetails = listTermApplicationDetails;
+            objMain.IDGeneratorForPacs = usercredentials.PacsId;
+            objMain.SerialNumberOfPacs = usercredentials.PACSSerialNumber;
+            log.DebugFormat("Leaving  FillApplicationMain");
+            return objMain;
+        }
+
+        /// <summary>
+        /// To fill investment application details object. When new investment application is saving.
+        /// </summary>
+        /// <param name="objInvestmentApllicationDTO"></param>
+        /// <param name="usercredentials"></param>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>21/08/2017</CreatedDate>
+        /// <FunctionName>FillInvestmentAppDtls</FunctionName>
+        /// <ReturnType>string</ReturnType>
+        /// <DataBaseTables>Inv_InvestmentApplicationDetails</VoucherMain>
+        /// <ModifiedDate></ModifiedDate>        
+        public InvestmentApplicationDetails FillInvestmentAppDtls(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials)
+        {
+            
+            //long lastAccNo =  (Convert.ToInt64(GetMaxSequenceNumberForApplication(usercredentials.PacsId, usercredentials.BranchId)))+1;
+            //string accountNoLatest = usercredentials.CBSID + 34.ToString().PadLeft(2, '0') + (lastAccNo).ToString().PadLeft(6, '0');//productcode.ToString().PadLeft(2, '0') + (Convert.ToInt64(accountno) + 1).ToString().PadLeft(6, '0');
+            //log.DebugFormat("Entering FillInvestmentAppDtls for latest investment number {0}", accountNoLatest);
+            //objInvestmentApllicationDTO.TermInvestments.AccountNo = accountNoLatest;
+            InvestmentApplicationDetails objInvestmentApplicationDetails = new InvestmentApplicationDetails();
+            //objInvestmentApplicationDetails.AccountCode = new AccountDetails();            
+            //objInvestmentApplicationDetails.AccountCode = CreateAccount(objInvestmentApllicationDTO, usercredentials);
+
+            //objInvestmentApplicationDetails.AccountNo = Convert.ToInt64(objInvestmentApllicationDTO.TermInvestments.AccountNo);
+
+            objInvestmentApplicationDetails.BoardResolutionDate = Convert.ToDateTime(objInvestmentApllicationDTO.TermInvestments.BoardResolutionDate);
+            objInvestmentApplicationDetails.BoardResolutionNo = objInvestmentApllicationDTO.TermInvestments.BoardResolutionNo;
+            objInvestmentApplicationDetails.BranchIDPkey = usercredentials.BranchId;
+            objInvestmentApplicationDetails.DepositType = new InvestmentDepositType();
+            if (objInvestmentApllicationDTO.TermInvestments.DepositType > 0)
+                objInvestmentApplicationDetails.DepositType.InvestmentDepositTypeId = objInvestmentApllicationDTO.TermInvestments.DepositType;
+            else
+                objInvestmentApplicationDetails.DepositType = null;
+            objInvestmentApplicationDetails.FrequencyTypeID = new FrequncyTypeMaster();
+            if (objInvestmentApllicationDTO.TermInvestments.FrequencyTypeID > 0)
+                objInvestmentApplicationDetails.FrequencyTypeID.FrequnecyID = objInvestmentApllicationDTO.TermInvestments.FrequencyTypeID;
+            else
+                objInvestmentApplicationDetails.FrequencyTypeID = null;
+            objInvestmentApplicationDetails.Interest = objInvestmentApllicationDTO.TermInvestments.ActualInterest;
+            objInvestmentApplicationDetails.InvestedAmount = objInvestmentApllicationDTO.TermInvestments.InvestedAmount;
+            objInvestmentApplicationDetails.InvestedDate = Convert.ToDateTime(objInvestmentApllicationDTO.TermInvestments.InvestedDate);//.Logindatetime;
+            //objInvestmentApplicationDetails.InvestmentTypeID = new InvestTypeMaster();
+            //objInvestmentApplicationDetails.InvestmentTypeID.InvestTypeID = objInvestmentApllicationDTO.TermInvestments.InvestmentID;
+            //objInvestmentApplicationDetails.InvestmentLocation = objInvestmentApllicationDTO.TermInvestments.InvestmentLocation;
+            objInvestmentApplicationDetails.Maturityamount = objInvestmentApllicationDTO.TermInvestments.ActualMaturityAmount;
+            objInvestmentApplicationDetails.MaturityDate = objInvestmentApllicationDTO.TermInvestments.MaturityDate;
+            objInvestmentApplicationDetails.PacsIDPkey = usercredentials.PacsId;
+            objInvestmentApplicationDetails.PeriodInDays = objInvestmentApllicationDTO.TermInvestments.PeriodInDays;
+            objInvestmentApplicationDetails.PeriodInMonths = objInvestmentApllicationDTO.TermInvestments.PeriodInMonths;
+            //objInvestmentApplicationDetails.ReferenceAccountNo = objInvestmentApllicationDTO.TermInvestments.ReferenceAccountNo;
+            objInvestmentApplicationDetails.ROI = objInvestmentApllicationDTO.TermInvestments.ROI;
+            objInvestmentApplicationDetails.AccountClosingDate = null;
+            objInvestmentApplicationDetails.TranscationDate = usercredentials.Logindatetime;
+            objInvestmentApplicationDetails.ClosureForeClosureInterest = 0.00m;
+            objInvestmentApplicationDetails.RenewalAccNo = null;
+            //objInvestmentApplicationDetails.VoucherNumber = 0;
+            objInvestmentApplicationDetails.ShareCertificateNo = objInvestmentApllicationDTO.ShareInvestments.AllottedShareCertificateNo;
+            objInvestmentApplicationDetails.NoofSharesAllotted = objInvestmentApllicationDTO.ShareInvestments.NoofSharesAllotted;
+            objInvestmentApplicationDetails.ShareValue = objInvestmentApllicationDTO.ShareInvestments.ShareValue;
+            //if (objInvestmentApllicationDTO.ShareInvestments.NoofSharesAllotted>0)
+            //    objInvestmentApplicationDetails.Status = "A";
+            //else
+            //    objInvestmentApplicationDetails.Status = "P";
+            objInvestmentApplicationDetails.IDGeneratorForPacs = usercredentials.PacsId;
+            objInvestmentApplicationDetails.SerialNumberOfPacs = usercredentials.PACSSerialNumber;
+            log.DebugFormat("Leaving FillInvestmentAppDtls");
+            return objInvestmentApplicationDetails;
+        }
+
+        /// <summary>
+        /// To fill account details object. Account details of investment application number and details will be stored in FA_Accountdetails Table.
+        /// </summary>
+        /// <param name="objInvestmentApllicationDTO"></param>
+        /// <param name="usercredentials"></param>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>21/08/2017</CreatedDate>
+        /// <FunctionName>CreateAccount</FunctionName>
+        /// <ReturnType>AccountDetails</ReturnType>
+        /// <DataBaseTables>FA_Accountdetails</VoucherMain>
+        /// <ModifiedDate></ModifiedDate>
+        
+        public AccountDetails CreateAccount(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials)
+        {
+            log.Debug("Entering CreateAccount");
+            AccountDetails ObjFasAccountDetails = new AccountDetails();
+            try
+            {
+                ObjFasAccountDetails.CustomerID = 0;//Convert.ToInt64(objInvestmentApllicationDTO.TermInvestments.AccountNo);
+                ObjFasAccountDetails.BranchId = usercredentials.BranchId;
+                ObjFasAccountDetails.PacsId = usercredentials.PacsId;
+                ObjFasAccountDetails.AccountCode = objInvestmentApllicationDTO.TermInvestments.AccountNo;
+                ProductMaster objProductMaster = new ProductMaster();
+                objProductMaster = session.Load<ProductMaster>(34);
+                ObjFasAccountDetails.ProductID = new ProductMaster();
+                ObjFasAccountDetails.ProductID.Slno = objProductMaster.Slno;
+                ObjFasAccountDetails.ProductTypeID = new ProductTypeMaster();
+                ObjFasAccountDetails.ProductTypeID.ProductTypeID = objProductMaster.ProductTypeID.ProductTypeID;// For deposits it is 2 in master; TermApplicationDetailsMain.ProductCodeFKey.ProductTypeID.ProductTypeID;                 
+                CommonFasBL objCommonFasbl = new CommonFasBL(session);
+                ObjFasAccountDetails.LedgerPKey = new Ledger();
+                ObjFasAccountDetails.LedgerPKey = session.Get<Ledger>(Convert.ToInt64(objInvestmentApllicationDTO.TermInvestments.InvestmentID));//objCommonFasbl.GetLedgerByProductSlNoAndTransrollID(objProductMaster.Slno, 121, 12, usercredentials.PacsId, usercredentials.BranchId);
+                if (ObjFasAccountDetails.LedgerPKey == null)
+                {
+                    return null;
+                }
+                ObjFasAccountDetails.YearCode = new FinancialYearMaster();
+                MasterBL masterBL = new MasterBL();
+                ObjFasAccountDetails.YearCode = masterBL.GetFinancialYearCode(usercredentials.Logindatetime);// (System.DateTime.Now.Year);
+               
+                ObjFasAccountDetails.AsOnDateBalance = 0;
+                ObjFasAccountDetails.OBCreditAmount = 0;
+                if (objInvestmentApllicationDTO.TermInvestments.InvestedDate <= usercredentials.CutOffDate)
+                {
+                    ObjFasAccountDetails.OpeningDate = usercredentials.CutOffDate;
+                    ObjFasAccountDetails.AsOnDate = usercredentials.CutOffDate;
+                    ObjFasAccountDetails.YearCode = masterBL.GetFinancialYearCode(Convert.ToDateTime(usercredentials.CutOffDate));// (System.DateTime.Now.Year
+                }
+                else
+                {
+                    ObjFasAccountDetails.OpeningDate = objInvestmentApllicationDTO.TermInvestments.InvestedDate;
+                    ObjFasAccountDetails.AsOnDate = objInvestmentApllicationDTO.TermInvestments.InvestedDate;
+                    ObjFasAccountDetails.YearCode = masterBL.GetFinancialYearCode(usercredentials.Logindatetime);
+                }
+                ObjFasAccountDetails.ClosingDate = usercredentials.Logindatetime;
+                ObjFasAccountDetails.AccountStatus = "A";
+                ObjFasAccountDetails.IDGeneratorForPacs = usercredentials.PacsId;
+                ObjFasAccountDetails.SerialNumberOfPacs = usercredentials.PACSSerialNumber;
+                ObjFasAccountDetails.TempAccountNo = objInvestmentApllicationDTO.TermInvestments.ReferenceAccountNo;
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+                return null;
+            }
+            log.Debug("Leaving CreateAccount");
+            return ObjFasAccountDetails;
+        }
+
+        /// <summary>
+        /// To fill interest payments for non cumulative investments
+        /// </summary>
+        /// <param name="objInvestmentApllicationDTO"></param>
+        /// <param name="usercredentials"></param>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>21/08/2017</CreatedDate>
+        /// <FunctionName>FillInterestPayments</FunctionName>
+        /// <ReturnType>IList<InvestmentInterestPayments></ReturnType>
+        /// <DataBaseTables>Inv_InvestmentInterestPayments</VoucherMain>
+        /// <ModifiedDate></ModifiedDate>
+        public IList<InvestmentInterestPayments> FillInterestPayments(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials, InvestmentApplicationDetailsMain objInvestmentApplicationDetailsMain)
+        {
+            log.Debug("Entering FillInterestPayments");
+            IList<InvestmentInterestPayments> listInvestmentInterestPayments = new List<InvestmentInterestPayments>();
+            int addMonths = 0;
+            DateTime firstIntDate;
+            addMonths = SetNoOfMonthsValue(Convert.ToInt32(objInvestmentApllicationDTO.TermInvestments.FrequencyTypeID), Convert.ToDateTime(objInvestmentApllicationDTO.TermInvestments.InvestedDate), Convert.ToDateTime(objInvestmentApllicationDTO.TermInvestments.MaturityDate));
+            //firstIntDate = Convert.ToDateTime(objTermApplicationDetailsDTO.DepositDate).AddMonths(addMonths);
+            if (objInvestmentApllicationDTO.TermInvestments.FrequencyTypeID == 11)
+                firstIntDate = Convert.ToDateTime(objInvestmentApllicationDTO.TermInvestments.MaturityDate);
+            
+            int Installments = NoOfInstallments(Convert.ToInt32(objInvestmentApllicationDTO.TermInvestments.FrequencyTypeID), objInvestmentApllicationDTO.TermInvestments.PeriodInMonths);
+            DateTime interestPostingDate = Convert.ToDateTime(objInvestmentApllicationDTO.TermInvestments.InvestedDate).AddMonths(FrequencyInMonths);
+            for (int i = 0; i < Installments; i++)
+            {
+                InvestmentInterestPayments objTermDepositInterestPayment = new InvestmentInterestPayments();
+                objTermDepositInterestPayment.BranchIDFKey = usercredentials.BranchId;                
+                objTermDepositInterestPayment.InvestmentNo = objInvestmentApplicationDetailsMain;
+                objTermDepositInterestPayment.Status = "Due";
+                //objTermDepositInterestPayment.StatusRegional = resTermDepositsLabels.Due;
+                objTermDepositInterestPayment.InterestAmount = objInvestmentApllicationDTO.TermInvestments.ActualInterest;
+                objTermDepositInterestPayment.InterestPerCycle = objInvestmentApllicationDTO.TermInvestments.ActualInterest;
+                objTermDepositInterestPayment.InterestPostingDate = interestPostingDate.Date;
+                objTermDepositInterestPayment.InterestReceivedDate = null;
+                objTermDepositInterestPayment.NoofMonInterestReceived = 1;
+                objTermDepositInterestPayment.PacsIDFKey = usercredentials.PacsId;
+                objTermDepositInterestPayment.IDGeneratorForPacs = usercredentials.PacsId;
+                objTermDepositInterestPayment.SerialNumberOfPacs = usercredentials.PACSSerialNumber;
+                interestPostingDate = interestPostingDate.AddMonths(FrequencyInMonths);
+                listInvestmentInterestPayments.Add(objTermDepositInterestPayment);
+            }
+
+            return listInvestmentInterestPayments;
+            log.Debug("Leaving FillInterestPayments");
+        }
+
+        /// <summary>
+        /// To get months for first interest posting 
+        /// </summary>
+        /// <param name="FreqValue"></param>
+        /// <param name="startDate"></param>
+        /// <param name="EndDate"></param>
+        /// <returns></returns>
+        public int SetNoOfMonthsValue(int FreqValue, DateTime startDate, DateTime EndDate)
+        {
+            log.Debug("Entering SetNoOfMonthsValue");
+            int MonthsIncrease = 0;
+            if (FreqValue == 6)
+            {
+                MonthsIncrease = 1;
+            }
+            else if (FreqValue == 7)
+            {
+                MonthsIncrease = 3;
+            }
+            else if (FreqValue == 8)
+            {
+                MonthsIncrease = 6;
+            }
+            else if (FreqValue == 9)
+            {
+                MonthsIncrease = 12;
+            }
+            else if (FreqValue == 11)
+            {
+                var dateSpan = DateTimeSpan.CompareDates(startDate, EndDate);
+                MonthsIncrease = dateSpan.Months + (dateSpan.Years * 12);
+            }
+            log.Debug("Leaving SetNoOfMonthsValue");
+            return MonthsIncrease;
+        }
+
+
+        int FrequencyInMonths = 0;
+        /// <summary>
+        /// Purpose: To get no. of installments using frequency and no. of months.
+        /// </summary>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>16/09/2017</CreatedDate>
+        /// <FunctionName>NoOfInstallments</FunctionName>
+        /// </summary>
+        /// <param name="frequencyCode"></param>
+        /// <param name="months"></param>
+        /// <returns></returns>
+        public int NoOfInstallments(int frequencyCode, int months)
+        {
+            log.Debug("Entering NoOfInstallments");
+            int NoOfInst = 0;
+            if (frequencyCode == 6)
+            {
+                NoOfInst = months / 1;
+                FrequencyInMonths = 1;
+            }
+            else if (frequencyCode == 7)
+            {
+                NoOfInst = months / 3;
+                FrequencyInMonths = 3;
+            }
+            else if (frequencyCode == 8)
+            {
+                NoOfInst = months / 6;
+                FrequencyInMonths = 6;
+            }
+            else if (frequencyCode == 9)
+            {
+                NoOfInst = months / 12;
+                FrequencyInMonths = 12;
+            }
+            else if (frequencyCode == 11)
+            {
+                NoOfInst = 1;
+            }
+            log.Debug("Leaving NoOfInstallments");
+            return NoOfInst;
+        }
+
+        /// <summary>
+        /// Purpose: To get difference between dates.
+        /// </summary>
+        public struct DateTimeSpan
+        {
+            private readonly int years;
+            private readonly int months;
+            private readonly int days;
+            private readonly int hours;
+            private readonly int minutes;
+            private readonly int seconds;
+            private readonly int milliseconds;
+
+            public DateTimeSpan(int years, int months, int days, int hours, int minutes, int seconds, int milliseconds)
+            {
+                this.years = years;
+                this.months = months;
+                this.days = days;
+                this.hours = hours;
+                this.minutes = minutes;
+                this.seconds = seconds;
+                this.milliseconds = milliseconds;
+            }
+
+            public int Years { get { return years; } }
+            public int Months { get { return months; } }
+            public int Days { get { return days; } }
+            public int Hours { get { return hours; } }
+            public int Minutes { get { return minutes; } }
+            public int Seconds { get { return seconds; } }
+            public int Milliseconds { get { return milliseconds; } }
+
+            enum Phase { Years, Months, Days, Done }
+
+            public static DateTimeSpan CompareDates(DateTime date1, DateTime date2)
+            {
+
+                if (date2 < date1)
+                {
+                    var sub = date1;
+                    date1 = date2;
+                    date2 = sub;
+                }
+
+                DateTime current = date2;
+                int years = 0;
+                int months = 0;
+                int days = 0;
+
+                Phase phase = Phase.Years;
+                DateTimeSpan span = new DateTimeSpan();
+
+                while (phase != Phase.Done)
+                {
+                    switch (phase)
+                    {
+                        case Phase.Years:
+                            if (current.Year == 1 || current.AddYears(-1) < date1)
+                            {
+                                phase = Phase.Months;
+                            }
+                            else
+                            {
+                                current = current.AddYears(-1);
+                                years++;
+                            }
+                            break;
+                        case Phase.Months:
+                            if (current.AddMonths(-1) < date1)
+                            {
+                                phase = Phase.Days;
+                            }
+                            else
+                            {
+                                current = current.AddMonths(-1);
+                                months++;
+                            }
+                            break;
+                        case Phase.Days:
+                            if (current.AddDays(-1) < date1)
+                            {
+                                var timespan = current - date1;
+                                span = new DateTimeSpan(years, months, days, timespan.Hours, timespan.Minutes, timespan.Seconds, timespan.Milliseconds);
+                                phase = Phase.Done;
+                            }
+                            else
+                            {
+                                current = current.AddDays(-1);
+                                days++;
+                            }
+                            break;
+                    }
+                }
+                return span;
+            }
+        }
+        #endregion
+
+
+        #region Transactions
+        
+        /// <summary>
+        /// Purpose: To get Existing Investment type master details to load while doing transactions.
+        /// </summary>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>16/09/2017</CreatedDate>
+        /// <FunctionName>GetInvestTypeMasterHavingAccounts</FunctionName>
+        /// </summary>
+        /// <param name=""></param>
+        /// <param name=""></param>
+        /// <returns></returns>
+        public IList<InvestTypeMaster> GetInvestTypeMasterHavingAccounts()
+        {
+            log.Debug("Entering GetInvestTypeMasterHavingAccounts");
+            IList<InvestTypeMaster> InvestMaster = new List<InvestTypeMaster>();
+            var InvestApp = session.QueryOver<InvestmentApplicationDetailsMain>().List();            
+            if(InvestApp.Count>0)
+            {
+                InvestMaster = InvestApp.Select(i => i.InvestmentTypeID).Distinct().ToList();
+            }
+            log.Debug("Entering GetInvestTypeMasterHavingAccounts");
+            return InvestMaster;
+        }
+
+        public long GetAccountCodePkey(string accountCode, long pacid, int brachid)
+        {
+            log.Debug("Entering GetInvestTypeMasterHavingAccounts");
+            var accountPkey = session.QueryOver<AccountDetails>().Where(i => i.AccountCode == accountCode && i.PacsId == pacid && i.BranchId == brachid).SingleOrDefault().AccountID;
+            log.Debug("Entering GetInvestTypeMasterHavingAccounts");
+            return accountPkey;
+        }
+        #endregion
+
+
+        /// <summary>
+        ///  Purpose: To get Bank Type Master List.
+        /// </summary>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>20/03/2017</CreatedDate>
+        /// <FunctionName>GetBankDetailsByBankType</FunctionName>
+        /// </summary>
+        /// <param name=""></param>
+        /// <param name=""></param>
+        /// <returns></returns>
+        public IList<BankTypeMaster> GetBankTypeMasterDtls()
+        {
+            log.Debug("Entering GetBankTypeMasterDtls");
+            IList<BankTypeMaster> lstBankTypeMaster = session.QueryOver<BankTypeMaster>().List<BankTypeMaster>();
+            log.Debug("Leaving GetBankTypeMasterDtls");
+            return lstBankTypeMaster;
+        }
+
+        /// <summary>
+        ///  Purpose: To get Bank Master List.
+        /// </summary>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>20/03/2017</CreatedDate>
+        /// <FunctionName>GetBankDetailsByBankType</FunctionName>
+        /// </summary>
+        /// <param name=""></param>
+        /// <param name=""></param>
+        /// <returns></returns>
+        public IList<BankMaster> GetBankDetailsByBankType(long bankType,long Pacid, int branchid)
+        {
+            log.Debug("Entering GetBankDetailsByBankType");
+            IList<BankMaster> lstBankMaster = session.QueryOver<BankMaster>().Where(i=>i.BankTypeId.BankTypeId == bankType && i.PacsId == Pacid && i.BranchId == branchid).List<BankMaster>();
+            log.Debug("Leaving GetBankDetailsByBankType");
+            return lstBankMaster;
+        }
+
+        /// <summary>
+        ///  Purpose: To get Bank Master List.
+        /// </summary>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>20/03/2017</CreatedDate>
+        /// <FunctionName>GetBankMasterList</FunctionName>
+        /// </summary>
+        /// <param name=""></param>
+        /// <param name=""></param>
+        /// <returns></returns>
+        public IList<BankMaster> GetBankMasterList()
+        {
+            log.Debug("Entering GetBankMasterList");
+            IList<BankMaster> lstBankMaster = session.QueryOver<BankMaster>().List<BankMaster>();
+            log.Debug("Leaving GetBankMasterList");
+            return lstBankMaster;
+        }
+
+        /// <summary>
+        ///  Purpose: To get Bank Branch Master List.
+        /// </summary>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>20/03/2017</CreatedDate>
+        /// <FunctionName>GetBankBranchMasterList</FunctionName>
+        /// </summary>
+        /// <param name=""></param>
+        /// <param name=""></param>
+        /// <returns></returns>
+        public IList<BankBranchMaster> GetBankBranchMasterList(long bankId, long Pacid, int branchid)
+        {
+            log.Debug("Entering GetBankBranchMasterList");
+            IList<BankBranchMaster> lstBankBranchMaster = session.QueryOver<BankBranchMaster>().Where(i => i.BankId.BankId == bankId && i.PacsId == Pacid && i.BranchId == branchid).List<BankBranchMaster>();
+            log.Debug("Leaving GetBankBranchMasterList");
+            return lstBankBranchMaster;
+        }
+
+        /// <summary>
+        ///  Purpose: To get investment accounts based on bank and branch.
+        /// </summary>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>30/03/2018</CreatedDate>
+        /// <FunctionName>GetInvestmentAccounts</FunctionName>
+        /// </summary>
+        /// <param name=""></param>
+        /// <param name=""></param>
+        /// <returns></returns>
+        public IList<string> GetInvestmentAccounts(long bankType, long bank, long bankBranch,long InvestmentType, long pacId, int branchId, DateTime LoginDate)
+        {
+           IList<string> lstInvAcc = new List<string>();
+            //InvestmentApplicationDetailsMain objInv = new InvestmentApplicationDetailsMain();
+            ////objInv.BranchIDPkey
+            //InvestmentApplicationDetails InvDtls = new InvestmentApplicationDetails();
+            //log.Debug("Entering GetInvestmentAccounts");
+            //string Query = @"select objInv.AccountNo from InvestmentApplicationDetailsMain objInv inner join objInv.InvestmentApplicationDetails InvDtls where objInv.Status='A' and objInv.ProductCode.Slno = :Product and  objInv.PacsIDPkey=:PacId and objInv.BranchIDPkey=:BranchId";
+            ////string query = @"select applicationMain.DepositNo from TermApplicationDetailsMain applicationMain inner join applicationMain.TermApplicationDetails applicationDetails where applicationMain.Status='A' and applicationDetails.MaturityDate >= Convert(Datetime,'" + loginDate + "',103) and applicationDetails.PacsIDFKey='" + pacId + "' and applicationDetails.BranchIDFKey='" + branchId + "'";
+            //IQuery query = session.CreateQuery(Query);
+            ////query.SetParameter("admissionNo", AdmissionNo);
+            ////query.SetParameter("PacId", PacsIDPkey);
+            ////query.SetParameter("BranchId", branchId);
+            ////query.SetParameter("Product", product);
+            //lstInvAcc = query.List<string>();
+
+            // Added by Sunil
+            var todaydate = LoginDate;
+            CommonFasBL objcommBL = new CommonFasBL();
+            string ValueForParallel = objcommBL.GetParameterValueForParallelRun(pacId, branchId);
+            if (ValueForParallel == "Y")
+            {
+                try
+                {
+                    IList<VoucherDetailsTemp> lstvocher = new List<VoucherDetailsTemp>();
+                    IList<InvestmentApplicationDetailsMain> lstApplicationmain = new List<InvestmentApplicationDetailsMain>();
+
+                    if (bankType > 0 && bank > 0)
+                        lstInvAcc = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "P" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId && i.BankType.BankTypeId == bankType && i.Bank.BankId == bank && i.BankBranch.SlNo == bankBranch).List<InvestmentApplicationDetailsMain>().Select(j => j.AccountNo).ToList<string>();
+                    else
+                    {
+                        lstvocher = session.QueryOver<VoucherDetailsTemp>().Where(i => i.TransactionID == 16011  && i.PacsId == pacId && i.BranchId == branchId).List<VoucherDetailsTemp>();
+                        lstApplicationmain = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "P" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                        lstApplicationmain = lstApplicationmain.Where(item => item.InvestmentApplicationDetails.Any(detail => detail.InvestedDate <= todaydate)).ToList();
+                        lstInvAcc = lstApplicationmain.Select(j => j.AccountNo).ToList<string>();
+                        //lstInvAcc = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType  && i.Status == "P" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>().Select(j => j.AccountNo).ToList<string>();
+                        lstInvAcc = lstInvAcc.Except(lstvocher.Select(v => v.AccountCode.AccountCode)).ToList();
+                        
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lstInvAcc = new List<string>();
+                }
+            }
+
+            else
+            {
+                try
+                {
+                    if (bankType > 0 && bank > 0)
+                        lstInvAcc = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "P" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId && i.BankType.BankTypeId == bankType && i.Bank.BankId == bank && i.BankBranch.SlNo == bankBranch).List<InvestmentApplicationDetailsMain>().Select(j => j.AccountNo).ToList<string>();
+                    else
+                        lstInvAcc = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "P" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>().Select(j => j.AccountNo).ToList<string>();
+                }
+                catch (Exception ex)
+                {
+                    lstInvAcc = new List<string>();
+                }
+            }
+            log.Debug("Leaving GetInvestmentAccounts");
+            return lstInvAcc;
+        }
+
+        ///// <summary>
+        /////  Purpose: To get Bank Type Master List.
+        ///// </summary>
+        ///// <Author>Raj</Author>
+        ///// <CreatedDate>20/03/2017</CreatedDate>
+        ///// <FunctionName>GetBankDetailsByBankType</FunctionName>
+        ///// </summary>
+        ///// <param name=""></param>
+        ///// <param name=""></param>
+        ///// <returns></returns>
+        //public IList<BankTypeMaster> GetBankTypeMasterDtlsByInvestId(long InvestmentTypeId)
+        //{
+        //    log.Debug("Entering GetBankTypeMasterDtls");
+        //    IList<BankTypeMaster> lstBankTypeMaster = session.QueryOver<BankTypeMaster>().Where(i=>i.).List<BankTypeMaster>();
+        //    log.Debug("Leaving GetBankTypeMasterDtls");
+        //    return lstBankTypeMaster;
+        //}
+
+        /// <summary>
+        ///  Purpose: To get investment accounts based on bank and branch for noncum investments.
+        /// </summary>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>30/03/2018</CreatedDate>
+        /// <FunctionName>GetInvestmentAccountsForNonCumInvestPay</FunctionName>
+        /// </summary>
+        /// <param name=""></param>
+        /// <param name=""></param>
+        /// <returns></returns>
+        public IList<string> GetInvestmentAccountsForNonCumInvestPay(long bankType, long bank, long bankBranch, long InvestmentType, long pacId, int branchId)
+        {
+            CommonFasBL objcommBL = new CommonFasBL();
+            string ValueForParallel = objcommBL.GetParameterValueForParallelRun(pacId, branchId);
+            IList<string> lstInvAcc = new List<string>();
+           IList< InvestmentApplicationDetailsMain> objInv = new List<InvestmentApplicationDetailsMain>();
+
+            //InvestmentApplicationDetails InvDtls = new InvestmentApplicationDetails();
+            //log.Debug("Entering GetInvestmentAccounts");
+            //string Query = @"select objInv.AccountNo from InvestmentApplicationDetailsMain objInv inner join objInv.InvestmentApplicationDetails InvDtls where objInv.Status='A' and objInv.ProductCode.Slno = :Product and  objInv.PacsIDPkey=:PacId and objInv.BranchIDPkey=:BranchId";            
+            //IQuery query = session.CreateQuery(Query);
+            //lstInvAcc = query.List<string>();
+
+            // Code Added by Sunil
+            if (ValueForParallel == "Y")
+            {
+                try
+                {                   
+                    if (bankType > 0 && bank > 0)
+                        objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.BankType.BankTypeId == bankType && i.Bank.BankId == bank && i.BankBranch.SlNo == bankBranch && i.InvestmentTypeID.InvestTypeID == InvestmentType  && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                    else
+                        objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType &&  i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                    if (objInv.Count > 0)
+                    {
+                        foreach (InvestmentApplicationDetailsMain main in objInv)
+                        {
+                            IList<VoucherDetailsTemp> objvocher = new List<VoucherDetailsTemp>();
+                            IList<VoucherDetailsTemp> lstvocher = new List<VoucherDetailsTemp>();
+                            lstvocher = session.QueryOver<VoucherDetailsTemp>().Where(i => i.TransactionID == 16011 && i.AccountCode.AccountID == main.AccountCode.AccountID && i.PacsId == pacId && i.BranchId == branchId).List<VoucherDetailsTemp>();
+                            if (lstvocher.Count != 0)
+                            {
+                                objvocher = session.QueryOver<VoucherDetailsTemp>().Where(i => (i.TransactionID == 16013 || i.TransactionID == 16014) && i.AccountCode.AccountID == main.AccountCode.AccountID && i.PacsId == pacId && i.BranchId == branchId).List<VoucherDetailsTemp>();
+                                if (objvocher.Count == 0)
+                                {
+                                    var dtls = main.InvestmentApplicationDetails.LastOrDefault();
+                                    if (dtls.DepositType.InvestmentDepositTypeId == 2)
+                                    {
+                                        lstInvAcc.Add(main.AccountNo);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                }
+                catch (Exception ex)
+                {
+                    lstInvAcc = new List<string>();
+                }
+            }
+
+            else { 
+            try
+            {
+                if (bankType>0 && bank>0)
+                    objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.BankType.BankTypeId == bankType && i.Bank.BankId == bank && i.BankBranch.SlNo == bankBranch && i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "A" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                else
+                    objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "A" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                if (objInv.Count>0)
+                {
+                    foreach(InvestmentApplicationDetailsMain main in objInv)
+                    {
+                        var dtls = main.InvestmentApplicationDetails.LastOrDefault();
+                        if(dtls.DepositType.InvestmentDepositTypeId==2){
+                            lstInvAcc.Add(main.AccountNo);
+                        }
+                    }                    
+                }
+            }
+            catch (Exception ex)
+            {
+                lstInvAcc = new List<string>();
+            }
+            }
+            log.Debug("Leaving GetInvestmentAccountsForNonCumInvestPay");
+            return lstInvAcc;
+        }
+
+        /// <summary>
+        ///  Purpose: To get investment accounts based on bank and branch for noncum investments.
+        /// </summary>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>30/03/2018</CreatedDate>
+        /// <FunctionName>GetInvestmentAccountsForNonCumInvestPay</FunctionName>
+        /// </summary>
+        /// <param name=""></param>
+        /// <param name=""></param>
+        /// <returns></returns>
+        public Tuple<IList<string>,string> GetInvestmentAccountsForeclosure(long bankType, long bank, long bankBranch, long InvestmentType, DateTime LoginDate, long pacId, int branchId)
+        {
+            CommonFasBL objcommBL = new CommonFasBL();
+            var todaydate = LoginDate;
+            string ValueForParallel = objcommBL.GetParameterValueForParallelRun(pacId, branchId);
+            IList<string> lstInvAcc = new List<string>();
+            IList<InvestmentApplicationDetailsMain> objInv = new List<InvestmentApplicationDetailsMain>();
+            string message ="";
+            //InvestmentApplicationDetails InvDtls = new InvestmentApplicationDetails();
+            //log.Debug("Entering GetInvestmentAccounts");
+            //string Query = @"select objInv.AccountNo from InvestmentApplicationDetailsMain objInv inner join objInv.InvestmentApplicationDetails InvDtls where objInv.Status='A' and objInv.ProductCode.Slno = :Product and  objInv.PacsIDPkey=:PacId and objInv.BranchIDPkey=:BranchId";            
+            //IQuery query = session.CreateQuery(Query);
+            //lstInvAcc = query.List<string>();
+
+            // Code Changed by Sunil
+            if (ValueForParallel == "Y")
+            {
+                
+                try
+                {
+                    if (bankType > 0 && bank > 0)
+                        objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.BankType.BankTypeId == bankType && i.Bank.BankId == bank && i.BankBranch.SlNo == bankBranch && i.InvestmentTypeID.InvestTypeID == InvestmentType && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                    else
+                        objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                        objInv = objInv.Where(item => item.InvestmentApplicationDetails.Any(detail => detail.InvestedDate <= todaydate)).ToList();
+                    if (objInv.Count > 0)
+                    {
+                        foreach (InvestmentApplicationDetailsMain main in objInv)
+                        {
+
+                            IList<VoucherDetailsTemp> objvocher = new List<VoucherDetailsTemp>();
+                            IList<VoucherDetailsTemp> lstvocher = new List<VoucherDetailsTemp>();
+                            lstvocher = session.QueryOver<VoucherDetailsTemp>().Where(i => i.TransactionID == 16011 && i.AccountCode.AccountID == main.AccountCode.AccountID && i.PacsId == pacId && i.BranchId == branchId).List<VoucherDetailsTemp>();
+                            if (lstvocher.Count != 0)
+                            {
+                                objvocher = session.QueryOver<VoucherDetailsTemp>().Where(i => (i.TransactionID == 16013 || i.TransactionID == 16014) && i.AccountCode.AccountID == main.AccountCode.AccountID && i.PacsId == pacId && i.BranchId == branchId).List<VoucherDetailsTemp>();
+                                if (objvocher.Count == 0)
+                                {
+                                    var dtls = main.InvestmentApplicationDetails.LastOrDefault();
+                                    if (dtls.MaturityDate > LoginDate)
+                                    {
+                                        lstInvAcc.Add(main.AccountNo);
+                                    }
+                                }
+
+                            }
+                        
+                        }
+                    }
+                    message = "No Accounts Exists For Selected Investment Type And Banks";//resInvestmentMessages.NoAccountsExistsForSelectedInvestmentTypeAndBanks;
+                }
+                catch (Exception ex)
+                {
+                    lstInvAcc = new List<string>();
+                }
+                
+            }
+            else {
+                try
+                {
+
+                    if (bankType > 0 && bank > 0)
+                        objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.BankType.BankTypeId == bankType && i.Bank.BankId == bank && i.BankBranch.SlNo == bankBranch && i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "A" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                    else
+                        objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "A" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                    if (objInv.Count > 0)
+                    {
+                        foreach (InvestmentApplicationDetailsMain main in objInv)
+                        {
+                            var dtls = main.InvestmentApplicationDetails.LastOrDefault();
+                            if (dtls.MaturityDate > LoginDate)
+                            {
+                                lstInvAcc.Add(main.AccountNo);
+                            }
+                        }
+                    }
+                    message = "No Accounts Exists For Selected Investment Type And Banks";//resInvestmentMessages.NoAccountsExistsForSelectedInvestmentTypeAndBanks;
+                }
+                catch (Exception ex)
+                {
+                    lstInvAcc = new List<string>();
+                }
+
+            }
+
+                log.Debug("Leaving GetInvestmentAccountsForeclosure");
+            var result = new Tuple<IList<string>, string>(lstInvAcc, message);
+            return result;
+        }
+
+        public IList<string> GetInvestmentAccountsClosure(long bankType, long bank, long bankBranch, long InvestmentType, DateTime LoginDate, long pacId, int branchId)
+        {
+            CommonFasBL objcommBL = new CommonFasBL();
+            var todaydate = LoginDate;
+            string ValueForParallel = objcommBL.GetParameterValueForParallelRun(pacId, branchId);
+            IList<string> lstInvAcc = new List<string>();
+            IList<InvestmentApplicationDetailsMain> objInv = new List<InvestmentApplicationDetailsMain>();
+            // Code Changed by Sunil
+            if (ValueForParallel == "Y")
+            {
+                try
+                {
+                    if (bankType > 0 && bank > 0)
+                        objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.BankType.BankTypeId == bankType && i.Bank.BankId == bank && i.BankBranch.SlNo == bankBranch && i.InvestmentTypeID.InvestTypeID == InvestmentType  && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                    else
+                        objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType  && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                        objInv = objInv.Where(item => item.InvestmentApplicationDetails.Any(detail => detail.InvestedDate <= todaydate)).ToList();
+                    if (objInv.Count > 0)
+                    {
+                        foreach (InvestmentApplicationDetailsMain main in objInv)
+                        {
+                            
+                            IList<VoucherDetailsTemp> objvocher = new List<VoucherDetailsTemp>();
+                            IList<VoucherDetailsTemp> lstvocher = new List<VoucherDetailsTemp>();
+                            lstvocher = session.QueryOver<VoucherDetailsTemp>().Where(i => i.TransactionID == 16011 && i.AccountCode.AccountID == main.AccountCode.AccountID && i.PacsId == pacId && i.BranchId == branchId).List<VoucherDetailsTemp>();
+                            if (lstvocher.Count != 0)
+                            { 
+                            objvocher = session.QueryOver<VoucherDetailsTemp>().Where(i => (i.TransactionID == 16013 || i.TransactionID == 16014) && i.AccountCode.AccountID == main.AccountCode.AccountID && i.PacsId == pacId && i.BranchId == branchId).List<VoucherDetailsTemp>();
+                            if (objvocher.Count == 0)
+                            {
+                                var dtls = main.InvestmentApplicationDetails.LastOrDefault();
+                                if (dtls.MaturityDate < LoginDate)
+                                {
+                                    lstInvAcc.Add(main.AccountNo);
+                                }
+                            }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lstInvAcc = new List<string>();
+                }
+            }
+            else 
+            { 
+                try
+            {
+                if (bankType>0 && bank>0)
+                    objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.BankType.BankTypeId == bankType && i.Bank.BankId == bank && i.BankBranch.SlNo == bankBranch && i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "A" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                else
+                    objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "A" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                if (objInv.Count > 0)
+                {
+                    foreach (InvestmentApplicationDetailsMain main in objInv)
+                    {
+                        var dtls = main.InvestmentApplicationDetails.LastOrDefault();
+                        if (dtls.MaturityDate < LoginDate)
+                        {
+                            lstInvAcc.Add(main.AccountNo);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                lstInvAcc = new List<string>();
+            }
+            }
+
+            log.Debug("Leaving GetInvestmentAccountsClosure");
+            return lstInvAcc;
+        }
+
+        public IList<string> GetInvestmentShareAccounts(long bankType, long bank, long bankBranch, long InvestmentType, long pacId, int branchId, DateTime LoginDate)
+        {
+            // Code Added by Sunil
+            IList<string> lstInvAcc = new List<string>();
+            var todaydate = LoginDate;
+            IList<InvestmentApplicationDetailsMain> lstApplicationmain = new List<InvestmentApplicationDetailsMain>();
+            try
+            {
+                if(bankType>0 && bank>0)
+                    lstInvAcc = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.BankType.BankTypeId == bankType && i.Bank.BankId == bank && i.BankBranch.SlNo == bankBranch && i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "A" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId ).List<InvestmentApplicationDetailsMain>().Select(j => j.AccountNo).ToList<string>();
+                else
+                {
+                    lstApplicationmain = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "A" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                    lstApplicationmain = lstApplicationmain.Where(item => item.InvestmentApplicationDetails.Any(detail => detail.InvestedDate <= todaydate)).ToList();
+                    lstInvAcc = lstApplicationmain.Select(j => j.AccountNo).ToList<string>();
+                    // lstInvAcc = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "A" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>().Select(j => j.AccountNo).ToList<string>();
+                }
+
+
+            }
+            catch (Exception ex)
+            {
+                lstInvAcc = new List<string>();
+            }
+            log.Debug("Leaving GetInvestmentShareAccounts");
+            return lstInvAcc;
+        }
+
+        public IList<string> GetRenewalInvestmentAccounts(long bankType, long bank, long bankBranch, long InvestmentType, DateTime LoginDate, long pacId, int branchId)
+        {
+            IList<string> lstInvAcc = new List<string>();
+            IList<InvestmentApplicationDetailsMain> objInv = new List<InvestmentApplicationDetailsMain>();
+            CommonFasBL objcommBL = new CommonFasBL();
+            string ValueForParallel = objcommBL.GetParameterValueForParallelRun(pacId, branchId);
+            var todaydate = LoginDate;
+            // 
+            if (ValueForParallel == "Y")
+            {
+                try
+                {
+                    if (bankType > 0 && bank > 0)
+                        objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.BankType.BankTypeId == bankType && i.Bank.BankId == bank && i.BankBranch.SlNo == bankBranch && i.InvestmentTypeID.InvestTypeID == InvestmentType  && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                    else
+                        objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                        objInv = objInv.Where(item => item.InvestmentApplicationDetails.Any(detail => detail.InvestedDate <= todaydate)).ToList();
+                    if (objInv.Count > 0)
+                    {
+                        foreach (InvestmentApplicationDetailsMain main in objInv)
+                        {
+                            var lstvocher = session.QueryOver<VoucherDetailsTemp>().Where(i => i.TransactionID == 16011 && i.AccountCode.AccountID == main.AccountCode.AccountID && i.PacsId == pacId && i.BranchId == branchId).List<VoucherDetailsTemp>();
+                            if (lstvocher.Count != 0)
+                            {
+                                var objvocher = session.QueryOver<VoucherDetailsTemp>().Where(i => (i.TransactionID == 16013 || i.TransactionID == 16014) && i.AccountCode.AccountID == main.AccountCode.AccountID && i.PacsId == pacId && i.BranchId == branchId).List<VoucherDetailsTemp>();
+                                if (objvocher.Count == 0)
+                                {
+                                    var dtls = main.InvestmentApplicationDetails.LastOrDefault();
+                                    if (dtls.MaturityDate < LoginDate)
+                                    {
+                                        lstInvAcc.Add(main.AccountNo);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lstInvAcc = new List<string>();
+                }
+            }
+            else
+            {
+                try
+                {
+                    if (bankType > 0 && bank > 0)
+                        objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.BankType.BankTypeId == bankType && i.Bank.BankId == bank && i.BankBranch.SlNo == bankBranch && i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "A" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                    else
+                        objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "A" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+
+                    if (objInv.Count > 0)
+                    {
+                        foreach (InvestmentApplicationDetailsMain main in objInv)
+                        {
+                            var dtls = main.InvestmentApplicationDetails.LastOrDefault();
+                            if (dtls.MaturityDate < LoginDate)
+                            {
+                                lstInvAcc.Add(main.AccountNo);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lstInvAcc = new List<string>();
+                }
+            }
+
+            log.Debug("Leaving GetInvestmentAccountsClosure");
+            return lstInvAcc;
+        }
+
+        public InvestmentApplicationDetailsMain GetRenewalAccountDetails(string accountNo, long pacId, int branchId)
+        {
+            InvestmentApplicationDetailsMain objInv = new InvestmentApplicationDetailsMain();
+            try
+            {
+                objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.AccountNo==accountNo && i.PacsIDPkey==pacId && i.BranchIDPkey ==branchId).SingleOrDefault();                
+            }
+            catch (Exception ex)
+            {
+
+            }
+            return objInv;
+        }
+
+        #region Renewal save
+        #region Renewal
+        public string[] RenewalInvestmentApplication(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials)
+        {
+            log.DebugFormat("Entering SaveInvestment for investment type {0}", objInvestmentApllicationDTO.TermInvestments.InvestmentID);
+            string[] saveResult = new string[5];
+            try
+            {
+                long OldDepositNo = 0;
+                long NewDepositNo = 0;
+                CommonFasBL fasbl = new CommonFasBL();
+                maxVoucherNo = fasbl.GetMaxVoucherNumber(usercredentials.Logindatetime, usercredentials.UserName, usercredentials.PacsId, usercredentials.BranchId, usercredentials.PACSSerialNumber, 2);//voucher.VoucherNo;
+                using (var trans = session.BeginTransaction())
+                {
+                    AccountDetails AccountDetails = new FAS.Model.AccountDetails();
+                    InvestmentApplicationDetailsMain objInvestmentApplicationDetailsMain = new InvestmentApplicationDetailsMain();
+                    InvestmentApplicationDetails objInvestmentApplicationDetails = new InvestmentApplicationDetails();
+                    InvestmentApplicationDetailsMain objInvestmentApplicationDetailsMainOld = new InvestmentApplicationDetailsMain();
+                    InvestmentApplicationDetails objInvestmentApplicationDetailsOld = new InvestmentApplicationDetails();
+                    objInvestmentApplicationDetailsMainOld = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.AccountNo == objInvestmentApllicationDTO.TermInvestments.AccountNo && i.Status == "A" && i.PacsIDPkey == usercredentials.PacsId && i.BranchIDPkey == usercredentials.BranchId).SingleOrDefault();
+                    objInvestmentApplicationDetails = FillInvestApplicationDetails(objInvestmentApllicationDTO, usercredentials);
+                    //objTermApplicationDetails.FirstInterestPostingDate = usercredentials.Logindatetime;
+                    objInvestmentApplicationDetailsOld = objInvestmentApplicationDetailsMainOld.InvestmentApplicationDetails.LastOrDefault();
+                    //objInvestmentApllicationDTO.AdmissionNoPkey = objInvestmentApplicationDetailsMainOld.AdmissionNoFKey.PerPkey;
+                    objInvestmentApplicationDetails.BoardResolutionDate = objInvestmentApplicationDetailsOld.BoardResolutionDate;
+                    if (objInvestmentApllicationDTO.TermInvestments.AutoRenewal == false)
+                    {
+                        objInvestmentApllicationDTO.TermInvestments.BoardResolutionDate = objInvestmentApplicationDetailsOld.BoardResolutionDate;
+                        objInvestmentApplicationDetailsMain = FillInvestApplicationDetailsMain(objInvestmentApllicationDTO, usercredentials, objInvestmentApplicationDetailsMainOld);
+                        NewDepositNo = objInvestmentApplicationDetailsMain.SlNoPkey;
+                        OldDepositNo = objInvestmentApplicationDetailsMainOld.SlNoPkey;
+                        objInvestmentApplicationDetailsMainOld.Status = "R";
+                        session.SaveOrUpdate(objInvestmentApplicationDetailsMain);
+
+                    }
+                    else
+                    {
+                        objInvestmentApplicationDetailsMainOld.InvestmentApplicationDetails.Add(objInvestmentApplicationDetails);
+                        OldDepositNo = objInvestmentApplicationDetailsMainOld.SlNoPkey;
+                        session.Merge(objInvestmentApplicationDetailsMainOld);
+                    }
+
+                    objInvestmentApllicationDTO.TermInvestments.InvestedDate = usercredentials.Logindatetime;
+                    //InvestmentApplicationDetailsMain objInvestmentApplicationDetailsMain = FillApplicationMain(objInvestmentApllicationDTO, usercredentials);
+                    
+                    DailyActivityLog _dailyActivityLog = DailyActivityLog.CreateDailyActivityLog(usercredentials.UserName, usercredentials.Logindatetime, 16001, 19, 1, usercredentials.PacsId, usercredentials.BranchId, usercredentials.PACSSerialNumber);
+                    _dailyActivityLog.IDGeneratorForPacs = usercredentials.PacsId;
+                    _dailyActivityLog.SerialNumberOfPacs = usercredentials.PACSSerialNumber;
+                    session.Save(_dailyActivityLog);
+                    int DepType = objInvestmentApllicationDTO.TermInvestments.DepositType;
+                    if (DepType == 2)
+                    {
+                        IList<InvestmentInterestPayments> ListInvestmentInterestPayments = FillInterestPayments(objInvestmentApllicationDTO, usercredentials, objInvestmentApplicationDetailsMain);
+                        if (ListInvestmentInterestPayments.Count > 0)
+                        {
+                            foreach (InvestmentInterestPayments intPay in ListInvestmentInterestPayments)
+                                session.Save(intPay);
+                        }
+                    }
+
+
+
+                    VoucherMain objVoucherMain = FillVoucherMain(usercredentials, objInvestmentApllicationDTO, objInvestmentApplicationDetailsOld, objInvestmentApplicationDetailsMainOld, objInvestmentApplicationDetailsMain);
+
+                    objVoucherMain.VoucherNo = maxVoucherNo;
+                    objVoucherMain.SocityVoucherNo = maxVoucherNo.ToString();
+                    objVoucherMain.IDGeneratorForPacs = usercredentials.PacsId;
+                    objVoucherMain.SerialNumberOfPacs = usercredentials.PACSSerialNumber;
+                    objVoucherMain.RelaxationDetailsPkey = usercredentials.RelaxationDetailsPkey;
+                    session.SaveOrUpdate(objVoucherMain);
+                    
+                    InvestmentClosure objTermDepositForeClosure = FillInvestmentClosueDetails(objInvestmentApplicationDetailsOld, usercredentials, objInvestmentApplicationDetailsMainOld);
+                    if (objTermDepositForeClosure != null)
+                    {
+                        objTermDepositForeClosure.IDGeneratorForPacs = usercredentials.PacsId;
+                        objTermDepositForeClosure.SerialNumberOfPacs = usercredentials.PACSSerialNumber;
+                        session.Merge(objTermDepositForeClosure);
+                    }
+                    trans.Commit();
+                    saveResult[0] = true.ToString(); // To return true if data save.
+                }
+            }
+            catch (Exception ex)
+            {
+                saveResult[0] = false.ToString(); // To return true if data save.
+            }
+
+            log.Debug("Leaving SaveInvestment");
+            return saveResult;
+        }
+
+        public InvestmentClosure FillInvestmentClosueDetails(InvestmentApplicationDetails objInvestmentApplicationDetails, UserCredentials objUserCredentials, InvestmentApplicationDetailsMain objInvestmentApplicationDetailsMain)
+        {
+            log.Debug("Entering FillTermClosueDetails");
+            InvestmentClosure objInvestmentClosure = new InvestmentClosure();
+            try
+            {
+                objInvestmentClosure.BranchId = objUserCredentials.BranchId;
+                objInvestmentClosure.ClosureAmount = objInvestmentApplicationDetails.InvestedAmount + objInvestmentApplicationDetails.Interest;
+                objInvestmentClosure.ClosureDate = objUserCredentials.Logindatetime;
+                objInvestmentClosure.ClosureInterest = objInvestmentApplicationDetails.Interest;
+                objInvestmentClosure.ClosureMaturityAmount = objInvestmentApplicationDetails.InvestedAmount + objInvestmentApplicationDetails.Interest;
+                objInvestmentClosure.InvestmentAmount = objInvestmentApplicationDetails.InvestedAmount;
+                objInvestmentClosure.InvestmentDate = objInvestmentApplicationDetails.InvestedDate;
+                InvestmentApplicationDetailsMain objTermMain = new InvestmentApplicationDetailsMain();
+                objTermMain.SlNoPkey = objInvestmentApplicationDetailsMain.SlNoPkey;
+                objInvestmentClosure.InvestmentNo = objTermMain;
+                objInvestmentClosure.Interest = objInvestmentApplicationDetails.Interest;
+                objInvestmentClosure.MaturityAmount = objInvestmentApplicationDetails.Maturityamount;
+                objInvestmentClosure.PacsId = objUserCredentials.PacsId;
+                //objInvestmentClosure.ProductCode = objTermMain.ProductCodeFKey.Slno;
+                objInvestmentClosure.Status = "R";
+                //objInvestmentClosure.StatusRegional = resInvestmentLables.R;
+                objInvestmentClosure.IDGeneratorForPacs = objUserCredentials.PacsId;
+                objInvestmentClosure.SerialNumberOfPacs = objUserCredentials.PACSSerialNumber;
+                log.Debug("Leaving FillTermClosueDetails");
+            }
+            catch (Exception ex)
+            {
+                TransactionErrorLogBL.TrackErrorLog(ex.Message, objUserCredentials);
+            }
+            return objInvestmentClosure;
+        }
+
+        public VoucherMain FillVoucherMain(UserCredentials objUserCredentials, InvestmentApllicationDTO objTermApplicationDetailsDTO, InvestmentApplicationDetails objTermApplicationDetailsOld, InvestmentApplicationDetailsMain objInvestmentApplicationDetailsMainOld, InvestmentApplicationDetailsMain objTermApplicationDetailsMain)
+        {
+            log.Debug("Entering FillVoucherMain");
+            VoucherMain ObjVchrMain = new VoucherMain();
+            try
+            {
+                CommonFasBL fascommonbl = new CommonFasBL(session);
+                ObjVchrMain.VoucherID = 0;
+                ObjVchrMain.BranchId = objUserCredentials.BranchId;
+                ObjVchrMain.PacsId = objUserCredentials.PacsId;
+                VoucherTypeMaster objVchTypeMast = new VoucherTypeMaster();
+                objVchTypeMast.VoucherTypeDescription = "Transfer";
+                objVchTypeMast.VoucherTypeID = 2;
+                ObjVchrMain.VoucherType = objVchTypeMast;
+                ObjVchrMain.BatchId = 0;
+                ObjVchrMain.TransactionDate = objUserCredentials.Logindatetime;//dtpMaturityDate.Value;
+                ObjVchrMain.ValueDate = Convert.ToDateTime(objTermApplicationDetailsDTO.TermInvestments.NewInvestmentDate.ToShortDateString() + " " + DateTime.Now.TimeOfDay);//dtpMaturityDate.Value;//dtpNewMaturityDate.Value;                        
+                ObjVchrMain.TransactionType = session.Load<FATransactionMaster>(2);
+                ObjVchrMain.Narration = "Term deposits Renewal";
+                ObjVchrMain.PassStatus = true;
+                FinancialYearMaster objFinYearMstr = new FinancialYearMaster();
+                objFinYearMstr = GetFinancialYearCode(objTermApplicationDetailsDTO.TermInvestments.NewInvestmentDate);
+                ObjVchrMain.YearCode = objFinYearMstr;
+                ObjVchrMain.Amount = objTermApplicationDetailsDTO.TermInvestments.NewInvestmentAmount;
+                ObjVchrMain.CashBookId = fascommonbl.Getcashcounterid(objUserCredentials);
+                ObjVchrMain.VoucherDeleted = false;
+                ObjVchrMain.VoucherDetails = new List<VoucherDetails>();
+                ObjVchrMain.IDGeneratorForPacs = objUserCredentials.PacsId;
+                ObjVchrMain.SerialNumberOfPacs = objUserCredentials.PACSSerialNumber;
+                ObjVchrMain.VoucherDetails = FillVoucherDetailsForRenewal(objUserCredentials, objTermApplicationDetailsDTO, objTermApplicationDetailsOld, objInvestmentApplicationDetailsMainOld, objTermApplicationDetailsMain, objFinYearMstr);
+                log.Debug("Leaving FillVoucherMain");
+            }
+            catch (Exception ex)
+            {
+                TransactionErrorLogBL.TrackErrorLog(ex.Message, objUserCredentials);
+            }
+            return ObjVchrMain;
+        }
+
+        public IList<MappingTransrollForFirm> GetTransRollsByActivityID(long SWTranPkey, long pacsid, int branchid, long Ledger)
+        {
+            log.Debug("Entering GetTransRollsByActivityID");
+            IList<MappingTransrollForFirm> listSWTransrollMapping = new List<MappingTransrollForFirm>();
+            //IQuery query = session.CreateQuery("from MappingTransrollForFirm TM where TM.ProductwiseActivityPKey.PKey=:TranPkey ");
+            //query.SetParameter("TranPkey", SWTranPkey);
+            //listSWTransrollMapping = query.List<MappingTransrollForFirm>();
+            listSWTransrollMapping = session.QueryOver<MappingTransrollForFirm>().Where(i => i.ProductTypeWise == SWTranPkey && i.MainLedger == Ledger && (i.PacsID == pacsid || i.PacsID==0)&& (i.BranchID == branchid || i.BranchID == 0)).List();
+            log.Debug("Leaving GetTransRollsByActivityID");
+            return listSWTransrollMapping;
+        }
+        public FinancialYearMaster GetFinancialYearCode(DateTime Date)
+        {
+            log.DebugFormat(" Entering into GetFinancialYearCode,Date -{0}",
+                                   Date);
+            FinancialYearMaster objyear = new FinancialYearMaster();
+            Mdm.BL.MasterBL bl = new Mdm.BL.MasterBL();
+            objyear = bl.GetFinancialYearCode(Date);
+            log.DebugFormat("Leaving GetFinancialYearCode, status-{0}", objyear.YearCode);
+            return objyear;
+        }
+        public IList<VoucherDetails> FillVoucherDetailsForRenewal(UserCredentials objUserCredentials, InvestmentApllicationDTO objTermApplicationDetailsDTO, InvestmentApplicationDetails objTermApplicationDetailsOld, InvestmentApplicationDetailsMain objTermApplicationDetailsMainOld, InvestmentApplicationDetailsMain objTermApplicationDetailsMain, FinancialYearMaster objFinYearMstr)
+        {
+            log.Debug("Entering FillVoucherDetailsForRenewal");
+            IList<VoucherDetails> listVoucherDetails = new List<VoucherDetails>();
+            try
+            {
+                //ProductWiseActivities objactivity = session.QueryOver<ProductWiseActivities>().Where(i => i.ProductType.ProductTypeID == objTermApplicationDetailsMainOld.ProductCodeFKey.ProductTypeID.ProductTypeID && i.Product.Slno == objTermApplicationDetailsMainOld.ProductCodeFKey.Slno && i.FormId == 90006 && i.Activities.ActivityId == 18).SingleOrDefault();
+                IList<MappingTransrollForFirm> listSWTransrollMapping = GetTransRollsByActivityID(49, objUserCredentials.PacsId, objUserCredentials.BranchId, objTermApplicationDetailsDTO.TermInvestments.InvestmentID);
+
+                int count = 0;
+                foreach (MappingTransrollForFirm trans in listSWTransrollMapping)
+                {
+                    if (count == 0)
+                    {
+                        VoucherDetails dtls = FillVoucherDetailsLineItems(objUserCredentials, objTermApplicationDetailsDTO, objTermApplicationDetailsMainOld, objTermApplicationDetailsMain, objFinYearMstr, trans, true, false, false);
+                        listVoucherDetails.Add(dtls);
+                    }
+                    else if (count == 1)
+                    {
+                        VoucherDetails dtls = FillVoucherDetailsLineItems(objUserCredentials, objTermApplicationDetailsDTO, objTermApplicationDetailsMainOld, objTermApplicationDetailsMain, objFinYearMstr, trans, false, true, false);
+                        listVoucherDetails.Add(dtls);
+                    }
+                    else
+                    {
+                        VoucherDetails dtls = FillVoucherDetailsLineItems(objUserCredentials, objTermApplicationDetailsDTO, objTermApplicationDetailsMainOld, objTermApplicationDetailsMain, objFinYearMstr, trans, false, false, true);
+                        listVoucherDetails.Add(dtls);
+                    }
+                    count++;
+                }
+            }
+            catch (Exception ex)
+            {
+                TransactionErrorLogBL.TrackErrorLog(ex.Message, objUserCredentials);
+            }
+            log.Debug("Leaving FillVoucherDetailsForRenewal");
+            return listVoucherDetails;
+        }
+
+        private VoucherDetails FillVoucherDetailsLineItems(UserCredentials objUserCredentials, InvestmentApllicationDTO objTermApplicationDetailsDTO, InvestmentApplicationDetailsMain objTermApplicationDetailsMainOld, InvestmentApplicationDetailsMain objTermApplicationDetailsMain, FinancialYearMaster objFinYearMstr, MappingTransrollForFirm trans, bool isDeposit, bool isInterest, bool isContra)
+        {
+            log.Debug("Entering FillVoucherDetailsLineItems");
+            CommonFasBL fascommonbl = new CommonFasBL(session);
+            Ledger objLedger = new Ledger();
+            VoucherDetails objVoucherDetails = new VoucherDetails();
+            try
+            {
+                objVoucherDetails.TransactionDate = Convert.ToDateTime(objUserCredentials.Logindatetime).Date;
+                objVoucherDetails.ValueDate = Convert.ToDateTime(objTermApplicationDetailsDTO.TermInvestments.NewInvestmentDate.ToShortDateString() + " " + DateTime.Now.TimeOfDay);
+                objVoucherDetails.VoucherDetailID = 0;
+                objVoucherDetails.PacsId = objUserCredentials.PacsId;
+                objVoucherDetails.BranchId = objUserCredentials.BranchId;
+                objVoucherDetails.TransactionID = 90016;
+                ProductMaster objPm = new Mdm.Model.ProductMaster();
+                objPm.Slno = 34;
+                objVoucherDetails.ProductId = objPm;//GetProductDetailsByslno(objTermApplicationDetailsDTO.ProductCode);
+                ProductTypeMaster objptm = new Mdm.Model.ProductTypeMaster();
+                objptm.ProductTypeID = 8;
+                objVoucherDetails.ProductTypeID = objptm;//objVoucherDetailsTemp.ProductId.ProductTypeID;// session.Load<ProductTypeMaster>();
+                objVoucherDetails.YearCode = objFinYearMstr;
+                objVoucherDetails.OpeningAmount = 0;
+                objVoucherDetails.BalanceAmount = 0;
+                if (isDeposit)
+                {
+                    objVoucherDetails.AccountCode = objTermApplicationDetailsMainOld.AccountCode;
+                    objVoucherDetails.TransrollID = Convert.ToInt32(trans.TransRoll);
+                    objVoucherDetails.LedgerCode = session.QueryOver<Ledger>().Where(i => i.LedgerId == trans.LedgerID).SingleOrDefault();
+                    objVoucherDetails.Debit = 0;
+                    objVoucherDetails.Credit = objTermApplicationDetailsDTO.TermInvestments.InvestedAmount;
+                    objVoucherDetails.Narration = "Investment amount";
+                }
+                if (isInterest)
+                {
+                    objVoucherDetails.AccountCode = objTermApplicationDetailsMainOld.AccountCode;
+                    objVoucherDetails.TransrollID = Convert.ToInt32(trans.TransRoll);
+                    objVoucherDetails.LedgerCode = session.QueryOver<Ledger>().Where(i => i.LedgerId == trans.LedgerID).SingleOrDefault();
+                    objVoucherDetails.Debit = 0;
+                    objVoucherDetails.Credit = objTermApplicationDetailsDTO.TermInvestments.ActualInterest;
+                    objVoucherDetails.Narration = "Investment Interest amount";
+                }
+                if (isContra)
+                {
+                    if (objTermApplicationDetailsMain.AccountCode != null)
+                        objVoucherDetails.AccountCode = objTermApplicationDetailsMain.AccountCode;
+                    else
+                        objVoucherDetails.AccountCode = objTermApplicationDetailsMainOld.AccountCode;
+                    objVoucherDetails.TransrollID = Convert.ToInt32(trans.TransRoll);
+                    objVoucherDetails.LedgerCode = session.QueryOver<Ledger>().Where(i => i.LedgerId == trans.LedgerID).SingleOrDefault();
+                    objVoucherDetails.Debit = objTermApplicationDetailsDTO.TermInvestments.InvestedAmount + objTermApplicationDetailsDTO.TermInvestments.ActualInterest;
+                    objVoucherDetails.Credit = 0;
+                    objVoucherDetails.Narration = "Investment amount";
+                    objVoucherDetails.BalanceAmount = objTermApplicationDetailsDTO.TermInvestments.InvestedAmount + objTermApplicationDetailsDTO.TermInvestments.ActualInterest;
+                }
+                log.Debug("Leaving FillVoucherDetailsLineItems");
+                objVoucherDetails.IDGeneratorForPacs = objUserCredentials.PacsId;
+                objVoucherDetails.SerialNumberOfPacs = objUserCredentials.PACSSerialNumber;
+            }
+            catch (Exception ex)
+            {
+                TransactionErrorLogBL.TrackErrorLog(ex.Message, objUserCredentials);
+            }
+            return objVoucherDetails;
+        }
+
+        public InvestmentApplicationDetails FillInvestApplicationDetails(InvestmentApllicationDTO objTermApplicationDetailsDTO, UserCredentials objUserCredentials)
+        {
+            InvestmentApplicationDetails objTermApplicationDetails = new InvestmentApplicationDetails();
+            try
+            {
+                log.Debug("Entering FillTermApplicationDetails");
+                objTermApplicationDetails.FrequencyTypeID = new FrequncyTypeMaster();                
+                objTermApplicationDetails.InvestAppPkey = new InvestmentApplicationDetailsMain();
+               
+                #region Renewal
+                    objTermApplicationDetails.BranchIDPkey = objUserCredentials.BranchId;
+                    objTermApplicationDetails.AccountClosingDate = null;
+                    objTermApplicationDetails.InvestedAmount = objTermApplicationDetailsDTO.TermInvestments.ActualMaturityAmount;
+                    objTermApplicationDetails.InvestedDate = objTermApplicationDetailsDTO.TermInvestments.NewInvestmentDate;
+                    objTermApplicationDetails.PeriodInDays = objTermApplicationDetailsDTO.TermInvestments.NewDurationDays;
+                    objTermApplicationDetails.PeriodInMonths = objTermApplicationDetailsDTO.TermInvestments.NewDurationMonths;
+                    
+                    objTermApplicationDetails.FrequencyTypeID = new FrequncyTypeMaster();
+                    if (objTermApplicationDetailsDTO.TermInvestments.FrequencyTypeID == 0)                        
+                        objTermApplicationDetails.FrequencyTypeID = null;
+                    else
+                    {
+                        log.DebugFormat(" Entered into FillTermApplicationDetails while creating new application to get frequency {0}", Convert.ToInt32(objTermApplicationDetailsDTO.TermInvestments.FrequencyTypeID));
+                        objTermApplicationDetails.FrequencyTypeID.FrequnecyID = Convert.ToInt32(objTermApplicationDetailsDTO.TermInvestments.FrequencyTypeID);
+                    }
+                    //objTermApplicationDetails.HasLoan = objTermApplicationDetailsDTO
+                    objTermApplicationDetails.Interest = objTermApplicationDetailsDTO.TermInvestments.NewInterestAmt;
+                    //objTermApplicationDetails.ledger = objTermApplicationDetailsDTO.NewLedgerFolioNo;
+                    objTermApplicationDetails.Maturityamount = objTermApplicationDetailsDTO.TermInvestments.NewMaturityAmount;
+                    objTermApplicationDetails.MaturityDate = objTermApplicationDetailsDTO.TermInvestments.NewMaturityDate;                    
+                    
+                    objTermApplicationDetails.PacsIDPkey = objUserCredentials.PacsId;
+                    objTermApplicationDetails.ROI = objTermApplicationDetailsDTO.TermInvestments.NewROI;
+                    //objTermApplicationDetails.Interest = objTermApplicationDetailsDTO.TermInvestments.NewSystemInterest;
+                    //objTermApplicationDetails.Maturityamount = objTermApplicationDetailsDTO.TermInvestments.NewSystemMaturityAmount;
+                    objTermApplicationDetails.TranscationDate = objUserCredentials.Logindatetime;                    
+                    objTermApplicationDetails.SerialNumberOfPacs = objUserCredentials.PACSSerialNumber;
+                    objTermApplicationDetails.IDGeneratorForPacs = objUserCredentials.PacsId;
+                    objTermApplicationDetails.BoardResolutionDate = Convert.ToDateTime(objTermApplicationDetailsDTO.TermInvestments.BoardResolutionDate);
+                    #endregion
+               
+                log.Debug("Leaving FillTermApplicationDetails");
+            }
+            catch (Exception ex)
+            {
+                TransactionErrorLogBL.TrackErrorLog(ex.Message, objUserCredentials);
+            }
+            return objTermApplicationDetails;
+        }
+
+        public InvestmentApplicationDetailsMain FillInvestApplicationDetailsMain(InvestmentApllicationDTO objTermApplicationDetailsDTO, UserCredentials objUserCredentials, InvestmentApplicationDetailsMain objInvestmentApplicationDetailsOld)
+        {
+            log.Debug("Entering FillTermApplicationDetailsMain");
+            InvestmentApplicationDetailsMain objTermApplicationDetailsMain = new InvestmentApplicationDetailsMain();
+            try
+            {
+                long lastAccNo = (Convert.ToInt64(GetMaxSequenceNumberForApplication(objUserCredentials.PacsId, objUserCredentials.BranchId))) + 1;
+                string accountNoLatest = objUserCredentials.CBSID + objTermApplicationDetailsDTO.TermInvestments.productCode.ToString().PadLeft(2, '0') + (lastAccNo).ToString().PadLeft(6, '0');//productcode.ToString().PadLeft(2, '0') + (Convert.ToInt64(accountno) + 1).ToString().PadLeft(6, '0');
+                log.DebugFormat("Entering FillInvestmentAppDtls for latest investment number {0}", accountNoLatest);
+                objTermApplicationDetailsMain.AccountNo = accountNoLatest;
+
+                objTermApplicationDetailsMain.AccountCode = new AccountDetails();
+                objTermApplicationDetailsMain.AccountCode = CreateAccountRenewal(objTermApplicationDetailsDTO, objUserCredentials, accountNoLatest);
+
+                objTermApplicationDetailsMain.InvestmentTypeID = new InvestTypeMaster();
+                objTermApplicationDetailsMain.InvestmentTypeID.InvestTypeID = objInvestmentApplicationDetailsOld.InvestmentTypeID.InvestTypeID;
+                objTermApplicationDetailsMain.BankType = new Mdm.Model.BankTypeMaster();
+                if (objInvestmentApplicationDetailsOld.BankType != null)
+                    objTermApplicationDetailsMain.BankType.BankTypeId = objInvestmentApplicationDetailsOld.BankType.BankTypeId;
+                else
+                    objTermApplicationDetailsMain.BankType=null;
+                objTermApplicationDetailsMain.Bank = new Mdm.Model.BankMaster();
+                if (objInvestmentApplicationDetailsOld.Bank != null)
+                    objTermApplicationDetailsMain.Bank.BankId = objInvestmentApplicationDetailsOld.Bank.BankId;
+                else
+                    objTermApplicationDetailsMain.Bank=null;
+                objTermApplicationDetailsMain.BankBranch = new Mdm.Model.BankBranchMaster();
+                if (objInvestmentApplicationDetailsOld.BankBranch != null)
+                    objTermApplicationDetailsMain.BankBranch.SlNo = objInvestmentApplicationDetailsOld.BankBranch.SlNo;
+                else
+                    objTermApplicationDetailsMain.BankBranch=null;
+
+                objTermApplicationDetailsMain.BranchIDPkey = objUserCredentials.BranchId;
+                objTermApplicationDetailsMain.ReferenceAccountNo = objTermApplicationDetailsDTO.TermInvestments.NewTempInvestmentNo;
+                objTermApplicationDetailsMain.PacsIDPkey = objUserCredentials.PacsId;
+                objTermApplicationDetailsMain.productCode = objTermApplicationDetailsDTO.TermInvestments.productCode;
+                objTermApplicationDetailsMain.Status = "A";
+                //objTermApplicationDetailsMain.StatusRegional = resInvestmentLables.A;
+                objTermApplicationDetailsMain.IDGeneratorForPacs = objUserCredentials.PacsId;
+                objTermApplicationDetailsMain.SerialNumberOfPacs = objUserCredentials.PACSSerialNumber;
+                IList<InvestmentApplicationDetails> listTermApplicationDetails = new List<InvestmentApplicationDetails>();
+                InvestmentApplicationDetails objTermApplicationDetails = new InvestmentApplicationDetails();
+                objTermApplicationDetails = FillInvestApplicationDetails(objTermApplicationDetailsDTO, objUserCredentials);
+                objTermApplicationDetails.InvestAppPkey = objTermApplicationDetailsMain;
+                listTermApplicationDetails.Add(objTermApplicationDetails);
+                objTermApplicationDetailsMain.InvestmentApplicationDetails = listTermApplicationDetails;
+
+                log.Debug("Leaving FillTermApplicationDetailsMain");
+            }
+            catch (Exception ex)
+            {
+                TransactionErrorLogBL.TrackErrorLog(ex.Message, objUserCredentials);
+            }
+            return objTermApplicationDetailsMain;
+        }
+
+        public AccountDetails CreateAccountRenewal(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials, string accountNoLatest)
+        {
+            log.Debug("Entering CreateAccount");
+            AccountDetails ObjFasAccountDetails = new AccountDetails();
+            try
+            {
+                ObjFasAccountDetails.CustomerID = 0;// Convert.ToInt64(accountNoLatest);
+                ObjFasAccountDetails.BranchId = usercredentials.BranchId;
+                ObjFasAccountDetails.PacsId = usercredentials.PacsId;
+                ObjFasAccountDetails.AccountCode = accountNoLatest;
+                ProductMaster objProductMaster = new ProductMaster();
+                objProductMaster = session.Load<ProductMaster>(34);
+                ObjFasAccountDetails.ProductID = new ProductMaster();
+                ObjFasAccountDetails.ProductID.Slno = objProductMaster.Slno;
+                ObjFasAccountDetails.ProductTypeID = new ProductTypeMaster();
+                ObjFasAccountDetails.ProductTypeID.ProductTypeID = objProductMaster.ProductTypeID.ProductTypeID;// For deposits it is 2 in master; TermApplicationDetailsMain.ProductCodeFKey.ProductTypeID.ProductTypeID;                 
+                CommonFasBL objCommonFasbl = new CommonFasBL(session);
+                ObjFasAccountDetails.LedgerPKey = new Ledger();
+                ObjFasAccountDetails.LedgerPKey = session.Get<Ledger>(Convert.ToInt64(objInvestmentApllicationDTO.TermInvestments.InvestmentID));//objCommonFasbl.GetLedgerByProductSlNoAndTransrollID(objProductMaster.Slno, 121, 12, usercredentials.PacsId, usercredentials.BranchId);
+                if (ObjFasAccountDetails.LedgerPKey == null)
+                {
+                    return null;
+                }
+                ObjFasAccountDetails.YearCode = new FinancialYearMaster();
+                MasterBL masterBL = new MasterBL();
+                ObjFasAccountDetails.YearCode = masterBL.GetFinancialYearCode(usercredentials.Logindatetime);// (System.DateTime.Now.Year);
+                ObjFasAccountDetails.AsOnDate = usercredentials.Logindatetime;
+                ObjFasAccountDetails.AsOnDateBalance = 0;
+                ObjFasAccountDetails.OBCreditAmount = 0;
+                ObjFasAccountDetails.OpeningDate = usercredentials.Logindatetime;
+                ObjFasAccountDetails.ClosingDate = usercredentials.Logindatetime;
+                ObjFasAccountDetails.AccountStatus = "A";
+                ObjFasAccountDetails.IDGeneratorForPacs = usercredentials.PacsId;
+                ObjFasAccountDetails.SerialNumberOfPacs = usercredentials.PACSSerialNumber;
+                ObjFasAccountDetails.TempAccountNo = objInvestmentApllicationDTO.TermInvestments.NewTempInvestmentNo;
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+                return null;
+            }
+            log.Debug("Leaving CreateAccount");
+            return ObjFasAccountDetails;
+        }
+
+
+        #endregion
+        #endregion
+
+        public IList<InvestTypeMaster> GetTermInvestmentMasterList()
+        {
+            log.Debug("Entering GetInvestmentMasterList");
+            IList<InvestTypeMaster> lstInvestTypeMaster = session.QueryOver<InvestTypeMaster>().Where(i=>i.TypeOfInvest != 3).List<InvestTypeMaster>();
+            log.Debug("Leaving GetInvestmentMasterList");
+            return lstInvestTypeMaster;
+        }
+
+        public long GetInvestTypeMasterId(long investmentTypeId)
+        {
+            log.Debug("Entering GetInvestmentMasterList");
+            long InvTypeMstId = 0;           
+                IList<InvestTypeMaster> lstInvestTypeMaster = session.QueryOver<InvestTypeMaster>().Where(i => i.InvestTypeID == investmentTypeId).List<InvestTypeMaster>();
+                if (lstInvestTypeMaster.Count>0)
+                    InvTypeMstId = lstInvestTypeMaster.FirstOrDefault().TypeOfInvest;
+                log.Debug("Leaving GetInvestmentMasterList");            
+            return InvTypeMstId;
+        }
+
+        public ProductMaster GetInvestmentProduct()
+        {
+            log.Debug("Entering GetProduct");
+            ProductMaster prdMst = session.QueryOver<ProductMaster>().Where(i => i.Slno == 34).SingleOrDefault();
+            return prdMst;
+        }
+
+        public bool isInvestmentRefNoExists(long investTypeId, string RefNo, long pacId, int branchId)
+        {
+            log.DebugFormat("Entering isInvestmentRefNoExists for productcode ={0} and pacid='{1}' and branch='{2}' and Reference no='{3}'", investTypeId, pacId, branchId, RefNo);
+            InvestmentApplicationDetailsMain objTermApplicationDetailsMainDepositNo = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == investTypeId && i.ReferenceAccountNo == RefNo && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).SingleOrDefault();
+            if (objTermApplicationDetailsMainDepositNo != null)
+                return true;
+            else
+                return false;
+        }
+
+        public bool isInvestmentShareAllottedNoExists(long investTypeId, string RefNo, long pacId, int branchId)
+        {
+            log.DebugFormat("Entering isInvestmentShareAllottedNoExists for productcode ={0} and pacid='{1}' and branch='{2}' and Reference no='{3}'", investTypeId, pacId, branchId, RefNo);
+            InvestmentApplicationDetails objInvestmentApplicationDetails = session.QueryOver<InvestmentApplicationDetails>().Where(i => i.ShareCertificateNo== RefNo && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).SingleOrDefault();
+            if (objInvestmentApplicationDetails != null)
+            {
+                return true;
+            }
+            else
+                return false;
+        }
+        public string GetDepositType(string accountno, long pacId, int branchId)
+        {
+            log.Debug("Entering GetDepositType");
+            string DepType = "";
+            InvestmentApplicationDetailsMain lstInvemain = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.AccountNo == accountno && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).SingleOrDefault();
+            if (lstInvemain != null)
+            {
+                if (lstInvemain.InvestmentApplicationDetails.LastOrDefault().DepositType != null)
+                {
+                    DepType = lstInvemain.InvestmentApplicationDetails.LastOrDefault().DepositType.InvestmentDepositTypeDescription;
+                }
+            }
+            log.Debug("Leaving GetDepositType");
+            return DepType;
+        }
+        
+        #region BackDate 
+        public string[] SaveInvestmentBackDate(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials, bool IsBackDate)
+        {
+            log.DebugFormat("Entering SaveInvestment for investment type {0}", objInvestmentApllicationDTO.TermInvestments.InvestmentID);
+            string[] saveResult = new string[5];
+            try
+            {
+                string InvAccountNo = "";
+                using (var trans = session.BeginTransaction())
+                {
+                    //InvestmentApplicationControlRecord objInvestmentApplicationControlRecord = SaveControlRecord(objTermApplicationDetailsDTO, objUserCredentials, "Capture", Convert.ToInt32(objTermApplicationDetailsDTO.formID));
+                    //objInvestmentApplicationControlRecord.Xml = "";// CreateXML(saledto, users).InnerXml;
+                    //objInvestmentApplicationControlRecord.IsApproved = Status;
+                    objInvestmentApllicationDTO.TermInvestments.InvestedDate = usercredentials.Logindatetime;
+                    InvestmentApplicationDetailsMain objInvestmentApplicationDetailsMain = FillApplicationMain(objInvestmentApllicationDTO, usercredentials);
+                    objInvestmentApplicationDetailsMain.AccountCode.OBDebitAmount = objInvestmentApllicationDTO.TermInvestments.InvestedAmount;
+                    objInvestmentApplicationDetailsMain.Status = "A";                    
+                    session.SaveOrUpdate(objInvestmentApplicationDetailsMain);
+                    DailyActivityLog _dailyActivityLog = DailyActivityLog.CreateDailyActivityLog(usercredentials.UserName, usercredentials.Logindatetime, 16001, 19, 1, usercredentials.PacsId, usercredentials.BranchId, usercredentials.PACSSerialNumber);
+                    session.Save(_dailyActivityLog);
+                    int DepType = objInvestmentApllicationDTO.TermInvestments.DepositType;
+                    if (DepType == 2)
+                    {
+                        int months = Convert.ToInt32(objInvestmentApllicationDTO.TermInvestments.NoOfMonthsInterestReceived);
+                        IList<InvestmentInterestPayments> ListInvestmentInterestPayments = FillInterestPayments(objInvestmentApllicationDTO, usercredentials, objInvestmentApplicationDetailsMain);
+                        if (ListInvestmentInterestPayments.Count > 0)
+                        {
+                            foreach (InvestmentInterestPayments intPay in ListInvestmentInterestPayments)
+                            {                                
+                                if (months>0)
+                                {
+                                    intPay.Status="Paid";
+                                    intPay.InterestReceivedDate = intPay.InterestPostingDate;
+                                    months--;
+                                }
+                                session.Save(intPay);
+                            }
+                        }
+                    }
+                    if (objInvestmentApllicationDTO.ShareInvestments.ShareValue > 0)
+                    {
+                        InvAccountNo = objInvestmentApplicationDetailsMain.AccountNo;
+                        InvestmentShareTranscation objInvestShareDeposit = FillShareInvestmentsBackDate(objInvestmentApllicationDTO, usercredentials, objInvestmentApplicationDetailsMain.AccountCode);
+                        session.Save(objInvestShareDeposit);
+                    }
+                    trans.Commit();
+                    saveResult[0] = true.ToString(); // To return true if data save.
+                }
+
+                if (InvAccountNo != "")
+                {
+                    using (var trans = session.BeginTransaction())
+                    {
+                        AccountDetails ac = session.QueryOver<AccountDetails>().Where(i => i.AccountCode == InvAccountNo && i.PacsId == usercredentials.PacsId && i.BranchId == usercredentials.BranchId).SingleOrDefault();
+
+                        InvestmentShareTranscation objshTran = session.QueryOver<InvestmentShareTranscation>().Where(i => i.InvestmentAccountNo == InvAccountNo && i.PacsId == usercredentials.PacsId && i.BranchId == usercredentials.BranchId).SingleOrDefault();
+                        objshTran.AccountCode = ac;
+                        session.Merge(objshTran);
+                        trans.Commit();
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                saveResult[0] = false.ToString(); // To return true if data save.
+            }
+
+            log.Debug("Leaving SaveInvestment");
+            return saveResult;
+        }
+
+        public InvestmentShareTranscation FillShareInvestmentsBackDate(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials, AccountDetails objAccountDetails)
+        {
+            InvestmentShareTranscation objInvestShareDeposit = new InvestmentShareTranscation();
+            Intellect.Unite.WebPackages.Investment.Model.InvestmentShareTranscation objOtherDepositTransactions = new Intellect.Unite.WebPackages.Investment.Model.InvestmentShareTranscation();           
+            objOtherDepositTransactions.AccountCode = objAccountDetails;
+            objInvestShareDeposit.OpeningAmount = objInvestmentApllicationDTO.ShareInvestments.ShareValue;
+            objInvestShareDeposit.BalanceAmount = objInvestmentApllicationDTO.ShareInvestments.ShareValue;
+            objInvestShareDeposit.BranchId = usercredentials.BranchId;
+            objInvestShareDeposit.CashBookId = usercredentials.CashBookId;
+            objInvestShareDeposit.Credit = 0;
+            objInvestShareDeposit.Debit = 0;
+            objInvestShareDeposit.LedgerCode = objAccountDetails.LedgerPKey;
+            objInvestShareDeposit.Narration = "Opening Balance";
+            objInvestShareDeposit.OpeningAmount = objInvestmentApllicationDTO.ShareInvestments.ShareValue;
+            objInvestShareDeposit.PacsId = usercredentials.PacsId;
+            objInvestShareDeposit.IDGeneratorForPacs = usercredentials.PacsId;
+            objInvestShareDeposit.SerialNumberOfPacs = usercredentials.PACSSerialNumber;
+            objInvestShareDeposit.ProductId = objAccountDetails.ProductID;
+            objInvestShareDeposit.ProductTypeID = objAccountDetails.ProductTypeID;
+            objInvestShareDeposit.TransactionDate = usercredentials.Logindatetime;
+            objInvestShareDeposit.TransactionID = 851;//objVoucherDetailsTemp.TransactionID;
+            objInvestShareDeposit.TransrollID = 16015;//objVoucherDetailsTemp.TransrollID;
+            if (objInvestmentApllicationDTO.TermInvestments.InvestedDate <= usercredentials.CutOffDate) // changes done for parallel run
+            {
+                objInvestShareDeposit.TransactionDate = Convert.ToDateTime(usercredentials.CutOffDate);
+                objInvestShareDeposit.ValueDate = Convert.ToDateTime(usercredentials.CutOffDate);
+            }
+            else
+            {
+                objInvestShareDeposit.TransactionDate = objInvestmentApllicationDTO.TermInvestments.InvestedDate.Value;
+                objInvestShareDeposit.ValueDate = objInvestmentApllicationDTO.TermInvestments.InvestedDate.Value;
+            }
+            objInvestShareDeposit.YearCode = objAccountDetails.YearCode;
+            objInvestShareDeposit.IsIssueCertificate = false;
+            objInvestShareDeposit.InvestmentAccountNo = objAccountDetails.AccountCode;
+
+            return objInvestShareDeposit;
+        }
+
+        #endregion
+
+        #region Interest postings
+        public IList<InvestmentInterestPostingDTO> GetInvestmentAccountsForInterestPosting(long bankType, long bank, long bankBranch, long InvestmentType, UserCredentials usercredentials)
+        {
+            IList<InvestmentInterestPostingDTO> lstInvAcc = new List<InvestmentInterestPostingDTO>();
+            IList<InvestmentApplicationDetailsMain> objInv = new List<InvestmentApplicationDetailsMain>();
+            try
+            {
+                //objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "A" && (i.BankType.BankTypeId == bankType || i.BankType.BankTypeId==0) && (i.Bank.BankId == bank ||i.Bank.BankId ==0) && (i.BankBranch.SlNo == bankBranch || i.BankBranch.SlNo ==0) && i.PacsIDPkey == usercredentials.PacsId && i.BranchIDPkey == usercredentials.BranchId).List<InvestmentApplicationDetailsMain>();
+                objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "A" && i.PacsIDPkey == usercredentials.PacsId && i.BranchIDPkey == usercredentials.BranchId).List<InvestmentApplicationDetailsMain>();
+                if (objInv.Count > 0)
+                {
+                    foreach (InvestmentApplicationDetailsMain main in objInv)
+                    {
+                        var dtls = main.InvestmentApplicationDetails.LastOrDefault();
+                        if(dtls != null)
+                        {
+                            InvestmentInterestPostingDTO objInvestmentInterestPostingDTO = new InvestmentInterestPostingDTO();
+                            //objInvestmentInterestPostingDTO.InterestAmount = dtls.Interest;
+                            objInvestmentInterestPostingDTO.InvestmentNo = main.AccountNo;
+                            objInvestmentInterestPostingDTO.InvestmentNoPkey = dtls.SlNo;
+                            if (main.ReferenceAccountNo != null)
+                            objInvestmentInterestPostingDTO.TempAccountNo = main.ReferenceAccountNo;
+                            objInvestmentInterestPostingDTO.InvestmentDate = dtls.InvestedDate;
+                            objInvestmentInterestPostingDTO.InvestmentAmount = dtls.InvestedAmount;
+
+                            lstInvAcc.Add(objInvestmentInterestPostingDTO);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                lstInvAcc = new List<InvestmentInterestPostingDTO>();
+            }
+
+            log.Debug("Leaving GetInvestmentAccountsClosure");
+            return lstInvAcc;
+        }
+
+
+        long maxVoucherNo;
+        public bool SaveInvestmentInterestPostingDetails(InvestmentInterestPostingDTO objInterestPostingsDTO, UserCredentials objUserCredentials, bool AddToInvestment, IList<InvestmentInterestPostingDTO> lstInterestPostingsDTONew)
+        {
+            log.Debug("Entering SaveTermInterestPostingDetails");
+            IList<InvestmentInterestPosting> listTermDepositsInterestPostings = new List<InvestmentInterestPosting>();            
+            try
+            {
+                if (lstInterestPostingsDTONew.Count > 0)
+                {
+                    listTermDepositsInterestPostings = FillInvestmentInterestPostingDTO(objInterestPostingsDTO, objUserCredentials, lstInterestPostingsDTONew);
+                    if (listTermDepositsInterestPostings.Count > 0)
+                    {
+                        CommonFasBL fasbl = new CommonFasBL();
+                        maxVoucherNo = fasbl.GetMaxVoucherNumber(objUserCredentials.Logindatetime, objUserCredentials.UserName, objUserCredentials.PacsId, objUserCredentials.BranchId, objUserCredentials.PACSSerialNumber, 2);//voucher.VoucherNo;
+                        using (var trans = session.BeginTransaction())
+                        {
+                            MasterBL objMasterBL = new MasterBL();
+                            FinancialYearMaster finYearObj = new FinancialYearMaster();
+                            finYearObj = objMasterBL.GetFinancialYearCode(objUserCredentials.Logindatetime);
+                            decimal TotalInterest = listTermDepositsInterestPostings.Sum(i => i.InterestAmount);
+
+                            DateTime ValueDate = objUserCredentials.Logindatetime;
+                            decimal TotalInterestAmount = 0.00m;
+                            int productCode = 34; //general
+                            VoucherMain objVoucherMain = new VoucherMain();
+                            objVoucherMain.VoucherDetails = new List<VoucherDetails>();
+                            //ProductWiseActivities objactivity = session.QueryOver<ProductWiseActivities>().Where(i => i.ProductType.ProductTypeID == 8 && i.Product.Slno == objInterestPostingsDTO.ProductCode && i.FormId == 16009 && i.Activities.ActivityId == 19).SingleOrDefault();                            
+                            IList<MappingTransrollForFirm> listSWTransrollMapping = GetTransRollsByActivityID(55, objUserCredentials.PacsId, objUserCredentials.BranchId, objInterestPostingsDTO.InvestmentID);
+                            if (listSWTransrollMapping.Count == 0)
+                            {
+                                return false;
+                            }
+                            foreach (InvestmentInterestPosting objInterestPosting in listTermDepositsInterestPostings)
+                            {
+                                AccountDetails objAccountDetails = session.QueryOver<AccountDetails>().Where(i => i.AccountCode == objInterestPosting.InvestmentNo && i.ProductID.Slno == objInterestPosting.ProductCode && i.PacsId == objInterestPosting.PacId && i.BranchId == objInterestPosting.BranchId).SingleOrDefault();
+                                VoucherDetails objVoucherDetails = FillVoucherDetails(objAccountDetails, objInterestPosting, objUserCredentials, finYearObj, listSWTransrollMapping.FirstOrDefault());
+                                VoucherDetails objVoucherDetailsContra = FillVoucherDtlsContra(objAccountDetails, objInterestPosting, objUserCredentials, finYearObj, listSWTransrollMapping[1], false);
+                                ValueDate = objInterestPosting.InterestReceivedDate;
+                                TotalInterestAmount += objInterestPosting.InterestAmount;
+                                productCode = objInterestPosting.ProductCode;
+
+                                objInterestPosting.IDGeneratorForPacs = objUserCredentials.PacsId;
+                                objInterestPosting.SerialNumberOfPacs = objUserCredentials.PACSSerialNumber;
+                                session.Save(objInterestPosting);
+                                objVoucherDetails.IDGeneratorForPacs = objUserCredentials.PacsId;
+                                objVoucherDetails.SerialNumberOfPacs = objUserCredentials.PACSSerialNumber;
+                                objVoucherMain.VoucherDetails.Add(objVoucherDetails);
+                                objVoucherDetailsContra.IDGeneratorForPacs = objUserCredentials.PacsId;
+                                objVoucherDetailsContra.SerialNumberOfPacs = objUserCredentials.PACSSerialNumber;
+                                objVoucherMain.VoucherDetails.Add(objVoucherDetailsContra);
+                            }
+                            objVoucherMain = FillVoucherMain(objUserCredentials, finYearObj, TotalInterestAmount, ValueDate, objVoucherMain);
+                            objVoucherMain.IDGeneratorForPacs = objUserCredentials.PacsId;
+                            objVoucherMain.SerialNumberOfPacs = objUserCredentials.PACSSerialNumber;
+                            objVoucherMain.RelaxationDetailsPkey = objUserCredentials.RelaxationDetailsPkey;
+                            session.Save(objVoucherMain);
+                            trans.Commit();
+                        }
+                        log.Debug("Leaving SaveTermInterestPostingDetails");
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+            }
+            log.Debug("Leaving SaveTermInterestPostingDetails");
+            return false;
+        }
+
+        private IList<InvestmentInterestPosting> FillInvestmentInterestPostingDTO(InvestmentInterestPostingDTO objTermDepositsInterestPostingsDTO, UserCredentials objUserCredentials, IList<InvestmentInterestPostingDTO> TermDepositsInterestPostingsDTONew)
+        {
+            log.Debug("Entering FillTermInterestPostingDTO");
+            IList<InvestmentInterestPosting> listInvestmentInterestPosting = new List<InvestmentInterestPosting>();
+            try
+            {
+                foreach (InvestmentInterestPostingDTO objIntPostDTO in TermDepositsInterestPostingsDTONew)
+                {
+                    var objInterestPostings = new InvestmentInterestPosting();
+                    objInterestPostings.InvestmentAmount = objIntPostDTO.InvestmentAmount;
+                    objInterestPostings.BranchId = objUserCredentials.BranchId;
+                    objInterestPostings.InvestmentNoPkey = objIntPostDTO.InvestmentNoPkey;
+                    objInterestPostings.InvestmentNo = objIntPostDTO.InvestmentNo;
+                    objInterestPostings.InterestAmount = objIntPostDTO.InterestAmount;
+                    objInterestPostings.InterestingPostingDate = objIntPostDTO.InterestPostingDate;
+                    objInterestPostings.InterestReceivedDate = objIntPostDTO.InterestPostingDate;
+                    objInterestPostings.LastInterestPostedDate = objTermDepositsInterestPostingsDTO.LastInterestPostedDate;
+                    objInterestPostings.OutstandingAmount = objIntPostDTO.OutstandingAmount;
+                    objInterestPostings.PacId = objUserCredentials.PacsId;                    
+                    objInterestPostings.ProductCode = objTermDepositsInterestPostingsDTO.ProductCode;
+                    objInterestPostings.Status = "Due";
+                   
+                    objInterestPostings.TransactionDate = objUserCredentials.Logindatetime;
+                    listInvestmentInterestPosting.Add(objInterestPostings);
+                }
+                log.Debug("Leaving FillTermInterestPostingDTO");
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+            }
+            return listInvestmentInterestPosting;
+        }
+
+        private VoucherMain FillVoucherMain(UserCredentials objUserCredentials, FinancialYearMaster finYearObj, decimal TotalInterestAmount, DateTime valueDate, VoucherMain vm)
+        {
+            log.Debug("Entering FillVouchermain");
+            try
+            {
+                vm.BranchId = objUserCredentials.BranchId;
+                vm.PacsId = objUserCredentials.PacsId;
+                VoucherTypeMaster vchrTypMst = new VoucherTypeMaster();
+                vchrTypMst = session.Load<VoucherTypeMaster>(2);
+                vm.VoucherType = vchrTypMst;
+                vm.BatchId = 0;
+                vm.TransactionDate = objUserCredentials.Logindatetime;
+                vm.ValueDate = valueDate;
+                vm.VoucherNo = maxVoucherNo;//fasbl.GetMaxVoucherNumber(valueDate, objUserCredentials.UserName, objUserCredentials.PacsId, objUserCredentials.BranchId);//voucher.VoucherNo;
+                vm.SocityVoucherNo = "0";
+
+                vm.Narration = "Term Interest Posting";
+                vm.PassStatus = true;
+                vm.YearCode = finYearObj;
+                vm.Amount = TotalInterestAmount;
+                vm.VoucherDeleted = false;
+                vm.CashBookId = objUserCredentials.CashBookId;
+                //vm.VStatus = true;
+                FATransactionMaster transTypeObj = new FATransactionMaster();
+                transTypeObj.TransactionTypeID = 2;
+                vm.TransactionType = transTypeObj;
+                vm.VisibleStatus = true;
+                log.Debug("Leaving FillVouchermain");
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);//TransactionErrorLogBL.TrackErrorLog(ex.Message, objUserCredentials);
+            }
+            return vm;
+        }
+
+        private VoucherDetails FillVoucherDetails(AccountDetails objAccountDetails, InvestmentInterestPosting objInterestPosting, UserCredentials objUserCredentials, FinancialYearMaster finYearObj, MappingTransrollForFirm trans)
+        {
+            log.Debug("Entering FillVoucherDetails");
+            VoucherDetails vdm = new VoucherDetails();
+            try
+            {
+                vdm.AccountCode = objAccountDetails;
+                var product = session.Get<ProductMaster>(Convert.ToInt32(objInterestPosting.ProductCode));
+                vdm.ProductId = session.Load<ProductMaster>(Convert.ToInt32(objInterestPosting.ProductCode));
+                vdm.ProductTypeID = product.ProductTypeID;
+                vdm.TransactionDate = objUserCredentials.Logindatetime.Date;
+                vdm.ValueDate = objInterestPosting.InterestReceivedDate;
+                vdm.Debit = 0;
+                vdm.Credit = objInterestPosting.InterestAmount;
+                #region                
+                vdm.TransrollID = Convert.ToInt32(trans.TransRoll);
+                vdm.LedgerCode = session.QueryOver<Ledger>().Where(i => i.LedgerId == trans.LedgerID).SingleOrDefault();
+                #endregion
+                MasterBL objMasterBL = new MasterBL();
+                vdm.YearCode = finYearObj;
+                vdm.FinanceYear = finYearObj.YearCode;                
+                vdm.TransactionID = 2;//Vd.TransactionID;
+                vdm.Narration = "Interest On Term Deposits";
+                vdm.CashBookId = objUserCredentials.CashBookId;
+                vdm.PacsId = objUserCredentials.PacsId;
+                vdm.BranchId = objUserCredentials.BranchId;
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+            }
+            log.Debug("Leaving FillVoucherDetails");
+            return vdm;
+        }
+
+        public VoucherDetails FillVoucherDtlsContra(AccountDetails objAccountDetails, InvestmentInterestPosting objInterestPosting, UserCredentials objUserCredentials, FinancialYearMaster finYearObj, MappingTransrollForFirm trans, bool isInterestToPayable)
+        {   
+            log.DebugFormat("Entered FillVoucherDtlsContra");
+            VoucherDetails PosToVchrDtls = new VoucherDetails();
+            try
+            {
+                PosToVchrDtls.AccountCode = objAccountDetails;
+                var product = session.Get<ProductMaster>(Convert.ToInt32(objInterestPosting.ProductCode));
+                PosToVchrDtls.ProductId = product;
+                PosToVchrDtls.ProductTypeID = product.ProductTypeID;
+
+                PosToVchrDtls.TransactionDate = Convert.ToDateTime(objUserCredentials.Logindatetime).Date;
+                PosToVchrDtls.ValueDate = objInterestPosting.InterestReceivedDate;
+
+                PosToVchrDtls.PacsId = objUserCredentials.PacsId;
+                PosToVchrDtls.BranchId = objUserCredentials.BranchId;
+                PosToVchrDtls.TransactionID = 2;
+                PosToVchrDtls.CashBookId = objUserCredentials.CashBookId;
+                PosToVchrDtls.TransrollID = 99;
+
+                PosToVchrDtls.Credit = 0;
+                PosToVchrDtls.Debit = objInterestPosting.InterestAmount;
+
+
+                PosToVchrDtls.TransrollID = Convert.ToInt32(trans.TransRoll);
+                PosToVchrDtls.LedgerCode = session.QueryOver<Ledger>().Where(i => i.LedgerId == trans.LedgerID).SingleOrDefault();
+               
+                if (isInterestToPayable == true)
+                    PosToVchrDtls.Narration = "Interest to Payable";
+                else
+                    PosToVchrDtls.Narration = "Deposit Amount";
+                PosToVchrDtls.YearCode = finYearObj;
+                PosToVchrDtls.FinanceYear = finYearObj.YearCode;
+                log.DebugFormat("Leaving FillVoucherDtlsContra");
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex);
+            }
+            return PosToVchrDtls;
+        }
+
+        public IList<MappingTransrollForFirm> GetTransRollsByActivityID(int SWTranPkey, int productid, long pacsid, int branchid, long Ledger, ProductTypeWiseActivity prodTypeActivity)
+        {
+            log.DebugFormat("Entering GetTransRollsByActivityID  SWTranPkey-{0}" + SWTranPkey);
+            IList<MappingTransrollForFirm> listSWTransrollMapping = new List<MappingTransrollForFirm>();           
+            listSWTransrollMapping = session.QueryOver<MappingTransrollForFirm>().Where(i => i.FinActivity == SWTranPkey && i.PacsID == pacsid && i.BranchID == branchid && i.ProductTypeWise == prodTypeActivity.PKey && i.MainLedger == Ledger).List();
+            log.DebugFormat("Leaving GetTransRollsByActivityID  SWTranPkey-{0}" + SWTranPkey);
+            return listSWTransrollMapping;
+        }
+        #endregion
+
+        public IList<InvestTypeMaster> GetInvestmentMasterListWithParameters(long pacsid, int branchid)
+        {
+            log.Debug("Entering GetInvestmentMasterList");
+            IList<InvestTypeMaster> lstInvestTypeMaster = new List<InvestTypeMaster>();
+            //IList<InvestTypeMaster> lstInvestTypeMstr = new List<InvestTypeMaster>();
+            lstInvestTypeMaster = session.QueryOver<InvestTypeMaster>().Where(i => i.PacsId==pacsid && i.BranchId==branchid).List<InvestTypeMaster>();
+            if (lstInvestTypeMaster.Count == 0)
+                lstInvestTypeMaster = session.QueryOver<InvestTypeMaster>().Where(i => i.PacsId==0 && i.BranchId==0).List<InvestTypeMaster>();
+
+            log.Debug("Leaving GetInvestmentMasterList");
+            return lstInvestTypeMaster;
+        }
+
+        public IList<InvestTypeMaster> GetTermInvestmentMasterListWithParameters(long pacsid, int branchid)
+        {
+            log.Debug("Entering GetInvestmentMasterList");
+            IList<InvestTypeMaster> lstInvestTypeMaster = session.QueryOver<InvestTypeMaster>().Where(i => i.TypeOfInvest != 3 && i.PacsId==pacsid && i.BranchId == branchid).List<InvestTypeMaster>();
+            
+                if (lstInvestTypeMaster.Count == 0)
+                    lstInvestTypeMaster = session.QueryOver<InvestTypeMaster>().Where(i => i.PacsId==0 && i.BranchId==0).List<InvestTypeMaster>();
+            
+            log.Debug("Leaving GetInvestmentMasterList");
+            return lstInvestTypeMaster;
+        }
+
+
+        #region modification
+        public IList<string> GetInvestmentAccountsForModify(long InvestmentType, DateTime LoginDate, long pacId, int branchId)
+        {
+            IList<string> lstInvAcc = new List<string>();
+            IList<InvestmentApplicationDetailsMain> objInv = new List<InvestmentApplicationDetailsMain>();
+            try
+            {
+               
+                objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == InvestmentType && i.Status == "A" && i.PacsIDPkey == pacId && i.BranchIDPkey == branchId).List<InvestmentApplicationDetailsMain>();
+                if (objInv.Count > 0)
+                {
+                    foreach (InvestmentApplicationDetailsMain main in objInv)
+                    {
+                        var dtls = main.InvestmentApplicationDetails.LastOrDefault();
+                        if (dtls.InvestedDate <= LoginDate)
+                        {
+                            lstInvAcc.Add(main.AccountNo);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                lstInvAcc = new List<string>();
+            }
+
+            log.Debug("Leaving GetInvestmentAccountsClosure");
+            return lstInvAcc;
+        }
+
+
+        public string[] ModifyInvestment(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials, bool IsDelete)
+        {
+            log.DebugFormat("Entering ModifyInvestment for investment type {0}", objInvestmentApllicationDTO.TermInvestments.InvestmentID);
+            string[] saveResult = new string[5];
+            string InvAccountNo = "";
+            try
+            {
+                using (var trans = session.BeginTransaction())
+                {
+                    if (IsDelete == true)
+                    {
+                        AccountDetails objacc = new AccountDetails();
+                        InvestmentApplicationDetailsMain objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == objInvestmentApllicationDTO.TermInvestments.InvestmentID && i.AccountNo== objInvestmentApllicationDTO.TermInvestments.AccountNo && i.Status == "A" && i.PacsIDPkey == usercredentials.PacsId && i.BranchIDPkey == usercredentials.BranchId).SingleOrDefault();
+                        objacc = objInv.AccountCode;
+                        IList<InvestmentInterestPosting> lstObInt = session.QueryOver<InvestmentInterestPosting>().Where(i => i.InvestmentNo == objInv.AccountNo && i.PacId == objInv.PacsIDPkey && i.BranchId == objInv.BranchIDPkey && i.InterestingPostingDate <=Convert.ToDateTime(usercredentials.CutOffDate)).List<InvestmentInterestPosting>();
+                        if (lstObInt.Count>0)
+                        {
+                            foreach (InvestmentInterestPosting intobj in lstObInt)
+                            {
+                                session.Delete(intobj);
+                                
+                            }                            
+                        }
+                        session.Delete(objInv);
+                        session.Delete(objacc);
+
+                        InvestmentShareTranscation objInvestShareDeposit = session.QueryOver<InvestmentShareTranscation>().Where(i => i.InvestmentAccountNo == objInvestmentApllicationDTO.TermInvestments.AccountNo && i.Credit==0 && i.Debit==0 && i.PacsId==usercredentials.PacsId && i.BranchId==usercredentials.BranchId).SingleOrDefault();
+                                if (objInvestShareDeposit != null)
+                                {
+                                    session.Delete(objInvestShareDeposit);
+                                }
+                           
+                        trans.Commit();
+                    }
+                    else
+                    {
+                        InvestmentApplicationDetailsMain objInv = session.QueryOver<InvestmentApplicationDetailsMain>().Where(i => i.InvestmentTypeID.InvestTypeID == objInvestmentApllicationDTO.TermInvestments.InvestmentID && i.AccountNo== objInvestmentApllicationDTO.TermInvestments.AccountNo && i.Status == "A" && i.PacsIDPkey == usercredentials.PacsId && i.BranchIDPkey == usercredentials.BranchId).SingleOrDefault();
+                        objInv = FillApplicationMainModify(objInvestmentApllicationDTO, usercredentials, objInv);
+                        if (objInv != null)
+                        {
+                            IList<InvestmentInterestPosting> lstObInt = session.QueryOver<InvestmentInterestPosting>().Where(i => i.InvestmentNo == objInv.AccountNo && i.PacId == objInv.PacsIDPkey && i.BranchId == objInv.BranchIDPkey && i.InterestingPostingDate <=Convert.ToDateTime(usercredentials.CutOffDate)).List<InvestmentInterestPosting>();
+                            if(lstObInt.Count>0)
+                            {
+                                InvestmentInterestPosting objint = lstObInt.FirstOrDefault();
+                                if (objint != null)
+                                {
+                                    objint.InterestAmount = objInvestmentApllicationDTO.TermInvestments.OBInterestAmount;
+                                    session.Merge(objint);  
+                                }
+                            }
+                            session.Merge(objInv);
+                        }
+                        if (objInvestmentApllicationDTO.TermInvestments.InvestedDate <= usercredentials.CutOffDate)
+                        {
+                            if (objInvestmentApllicationDTO.ShareInvestments.ShareValue > 0)
+                            {
+                                //InvAccountNo = objInvestmentApplicationDetailsMain.AccountNo;
+                                //InvestmentShareTranscation objInvestShareDeposit = FillShareInvestmentsBackDate(objInvestmentApllicationDTO, usercredentials, objInvestmentApplicationDetailsMain.AccountCode);
+                                //session.Save(objInvestShareDeposit);
+
+                                InvestmentShareTranscation objInvestShareDeposit = session.QueryOver<InvestmentShareTranscation>().Where(i => i.InvestmentAccountNo == objInvestmentApllicationDTO.TermInvestments.AccountNo && i.Credit==0 && i.Debit==0 && i.PacsId==usercredentials.PacsId && i.BranchId==usercredentials.BranchId).SingleOrDefault();
+                                if (objInvestShareDeposit != null)
+                                {
+                                    objInvestShareDeposit.OpeningAmount = objInvestmentApllicationDTO.ShareInvestments.ShareValue;
+                                    objInvestShareDeposit.BalanceAmount = objInvestmentApllicationDTO.ShareInvestments.ShareValue;
+                                    session.Merge(objInvestShareDeposit);
+                                }
+                            }
+                        }
+                        trans.Commit();
+                    }
+
+                    saveResult[0] = true.ToString(); // To return true if data save.
+                }
+               
+            }
+            catch (Exception ex)
+            {
+                saveResult[0] = false.ToString(); // To return true if data save.
+            }
+
+            log.Debug("Leaving SaveInvestment");
+            return saveResult;
+        }
+
+        public InvestmentApplicationDetailsMain FillApplicationMainModify(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials, InvestmentApplicationDetailsMain objMain)
+        {
+            log.DebugFormat("Entering FillApplicationMainModify");
+            //InvestmentApplicationDetailsMain objMain = new InvestmentApplicationDetailsMain();
+            //long lastAccNo = (Convert.ToInt64(GetMaxSequenceNumberForApplication(usercredentials.PacsId, usercredentials.BranchId))) + 1;
+            //string accountNoLatest = usercredentials.CBSID + objInvestmentApllicationDTO.TermInvestments.productCode.ToString().PadLeft(2, '0') + (lastAccNo).ToString().PadLeft(6, '0');//productcode.ToString().PadLeft(2, '0') + (Convert.ToInt64(accountno) + 1).ToString().PadLeft(6, '0');
+            //log.DebugFormat("Entering FillInvestmentAppDtls for latest investment number {0}", accountNoLatest);
+            //objInvestmentApllicationDTO.TermInvestments.AccountNo = accountNoLatest;
+
+            //objMain.AccountCode = new AccountDetails();
+            //objMain.AccountCode = CreateAccount(objInvestmentApllicationDTO, usercredentials);
+            //objMain.AccountNo = objInvestmentApllicationDTO.TermInvestments.AccountNo;
+
+            if (objInvestmentApllicationDTO.TermInvestments.InvestedDate > usercredentials.CutOffDate)
+            {
+                objMain.AccountCode.OBDebitAmount = 0;
+            }
+            else
+            {
+                if (objInvestmentApllicationDTO.TermInvestments.InvestedAmount > 0)
+                    objMain.AccountCode.OBDebitAmount = objInvestmentApllicationDTO.TermInvestments.InvestedAmount + objInvestmentApllicationDTO.TermInvestments.OBInterestAmount;
+                if (objInvestmentApllicationDTO.ShareInvestments.ShareValue > 0)
+                {
+                    objMain.AccountCode.OBDebitAmount = objInvestmentApllicationDTO.ShareInvestments.ShareValue;
+                }
+                objMain.Status = "A";
+            }
+
+            objMain.AccountCode.TempAccountNo =objInvestmentApllicationDTO.TermInvestments.ReferenceAccountNo;
+            objMain.ReferenceAccountNo = objInvestmentApllicationDTO.TermInvestments.ReferenceAccountNo;
+
+            //IList<InvestmentApplicationDetails> listTermApplicationDetails = new List<InvestmentApplicationDetails>();
+            //InvestmentApplicationDetails objInvestmentApplicationDetails = new InvestmentApplicationDetails();
+            //objMain.InvestmentApplicationDetails = FillInvestmentAppDtlsModify(objInvestmentApllicationDTO, usercredentials, );
+            //objInvestmentApplicationDetails.InvestAppPkey = objMain;
+            //listTermApplicationDetails.Add(objInvestmentApplicationDetails);
+            //objMain.InvestmentApplicationDetails = listTermApplicationDetails;
+
+            objMain.InvestmentApplicationDetails.FirstOrDefault().BoardResolutionDate = Convert.ToDateTime(objInvestmentApllicationDTO.TermInvestments.BoardResolutionDate);
+            objMain.InvestmentApplicationDetails.FirstOrDefault().BoardResolutionNo = objInvestmentApllicationDTO.TermInvestments.BoardResolutionNo;
+
+
+            if (objInvestmentApllicationDTO.TermInvestments.DepositType > 0)
+            {
+                objMain.InvestmentApplicationDetails.FirstOrDefault().DepositType = new InvestmentDepositType();
+                objMain.InvestmentApplicationDetails.FirstOrDefault().DepositType.InvestmentDepositTypeId = objInvestmentApllicationDTO.TermInvestments.DepositType;
+            }
+            else
+                objMain.InvestmentApplicationDetails.FirstOrDefault().DepositType = null;
+
+            if (objInvestmentApllicationDTO.TermInvestments.FrequencyTypeID > 0)
+            {
+                objMain.InvestmentApplicationDetails.FirstOrDefault().FrequencyTypeID = new FrequncyTypeMaster();
+                objMain.InvestmentApplicationDetails.FirstOrDefault().FrequencyTypeID.FrequnecyID = objInvestmentApllicationDTO.TermInvestments.FrequencyTypeID;
+            }
+            else
+                objMain.InvestmentApplicationDetails.FirstOrDefault().FrequencyTypeID = null;
+            objMain.InvestmentApplicationDetails.FirstOrDefault().Interest = objInvestmentApllicationDTO.TermInvestments.ActualInterest;
+            objMain.InvestmentApplicationDetails.FirstOrDefault().InvestedAmount = objInvestmentApllicationDTO.TermInvestments.InvestedAmount;
+            objMain.InvestmentApplicationDetails.FirstOrDefault().InvestedDate = Convert.ToDateTime(objInvestmentApllicationDTO.TermInvestments.InvestedDate);//.Logindatetime;
+            //objInvestmentApplicationDetails.InvestmentTypeID = new InvestTypeMaster();
+            //objInvestmentApplicationDetails.InvestmentTypeID.InvestTypeID = objInvestmentApllicationDTO.TermInvestments.InvestmentID;
+            //objInvestmentApplicationDetails.InvestmentLocation = objInvestmentApllicationDTO.TermInvestments.InvestmentLocation;
+            objMain.InvestmentApplicationDetails.FirstOrDefault().Maturityamount = objInvestmentApllicationDTO.TermInvestments.ActualMaturityAmount;
+            objMain.InvestmentApplicationDetails.FirstOrDefault().MaturityDate = objInvestmentApllicationDTO.TermInvestments.MaturityDate;
+            //objInvestmentApplicationDetails.PacsIDPkey = usercredentials.PacsId;
+            objMain.InvestmentApplicationDetails.FirstOrDefault().PeriodInDays = objInvestmentApllicationDTO.TermInvestments.PeriodInDays;
+            objMain.InvestmentApplicationDetails.FirstOrDefault().PeriodInMonths = objInvestmentApllicationDTO.TermInvestments.PeriodInMonths;
+            //objInvestmentApplicationDetails.ReferenceAccountNo = objInvestmentApllicationDTO.TermInvestments.ReferenceAccountNo;
+            objMain.InvestmentApplicationDetails.FirstOrDefault().ROI = objInvestmentApllicationDTO.TermInvestments.ROI;
+            //objInvestmentApplicationDetails.AccountClosingDate = null;
+            objMain.InvestmentApplicationDetails.FirstOrDefault().TranscationDate = usercredentials.Logindatetime;
+            //objInvestmentApplicationDetails.ClosureForeClosureInterest = 0.00m;
+            //objInvestmentApplicationDetails.RenewalAccNo = null;
+            //objInvestmentApplicationDetails.VoucherNumber = 0;
+            objMain.InvestmentApplicationDetails.FirstOrDefault().ShareCertificateNo = objInvestmentApllicationDTO.ShareInvestments.AllottedShareCertificateNo;
+            objMain.InvestmentApplicationDetails.FirstOrDefault().NoofSharesAllotted = objInvestmentApllicationDTO.ShareInvestments.NoofSharesAllotted;
+            objMain.InvestmentApplicationDetails.FirstOrDefault().ShareValue = objInvestmentApllicationDTO.ShareInvestments.ShareValue;
+            //if (objInvestmentApllicationDTO.ShareInvestments.NoofSharesAllotted>0)
+            //    objInvestmentApplicationDetails.Status = "A";
+            //else
+            //    objInvestmentApplicationDetails.Status = "P";
+            //objInvestmentApplicationDetails.IDGeneratorForPacs = usercredentials.PacsId;
+            //objInvestmentApplicationDetails.SerialNumberOfPacs = usercredentials.PACSSerialNumber;
+
+            //objMain.IDGeneratorForPacs = usercredentials.PacsId;
+            //objMain.SerialNumberOfPacs = usercredentials.PACSSerialNumber;
+            log.DebugFormat("Leaving  FillApplicationMainModify");
+            return objMain;
+        }
+
+        /// <summary>
+        /// To fill investment application details object. When new investment application is saving.
+        /// </summary>
+        /// <param name="objInvestmentApllicationDTO"></param>
+        /// <param name="usercredentials"></param>
+        /// <Author>Raj</Author>
+        /// <CreatedDate>21/08/2017</CreatedDate>
+        /// <FunctionName>FillInvestmentAppDtls</FunctionName>
+        /// <ReturnType>string</ReturnType>
+        /// <DataBaseTables>Inv_InvestmentApplicationDetails</VoucherMain>
+        /// <ModifiedDate></ModifiedDate>        
+        public InvestmentApplicationDetails FillInvestmentAppDtlsModify(InvestmentApllicationDTO objInvestmentApllicationDTO, UserCredentials usercredentials, InvestmentApplicationDetails objInvestmentApplicationDetails)
+        {
+
+            //long lastAccNo =  (Convert.ToInt64(GetMaxSequenceNumberForApplication(usercredentials.PacsId, usercredentials.BranchId)))+1;
+            //string accountNoLatest = usercredentials.CBSID + 34.ToString().PadLeft(2, '0') + (lastAccNo).ToString().PadLeft(6, '0');//productcode.ToString().PadLeft(2, '0') + (Convert.ToInt64(accountno) + 1).ToString().PadLeft(6, '0');
+            //log.DebugFormat("Entering FillInvestmentAppDtls for latest investment number {0}", accountNoLatest);
+            //objInvestmentApllicationDTO.TermInvestments.AccountNo = accountNoLatest;
+            //InvestmentApplicationDetails objInvestmentApplicationDetails = new InvestmentApplicationDetails();
+            //objInvestmentApplicationDetails.AccountCode = new AccountDetails();            
+            //objInvestmentApplicationDetails.AccountCode = CreateAccount(objInvestmentApllicationDTO, usercredentials);
+
+            //objInvestmentApplicationDetails.AccountNo = Convert.ToInt64(objInvestmentApllicationDTO.TermInvestments.AccountNo);
+
+            objInvestmentApplicationDetails.BoardResolutionDate = Convert.ToDateTime(objInvestmentApllicationDTO.TermInvestments.BoardResolutionDate);
+            objInvestmentApplicationDetails.BoardResolutionNo = objInvestmentApllicationDTO.TermInvestments.BoardResolutionNo;
+            objInvestmentApplicationDetails.BranchIDPkey = usercredentials.BranchId;
+            objInvestmentApplicationDetails.DepositType = new InvestmentDepositType();
+            if (objInvestmentApllicationDTO.TermInvestments.DepositType > 0)
+                objInvestmentApplicationDetails.DepositType.InvestmentDepositTypeId = objInvestmentApllicationDTO.TermInvestments.DepositType;
+            else
+                objInvestmentApplicationDetails.DepositType = null;
+            objInvestmentApplicationDetails.FrequencyTypeID = new FrequncyTypeMaster();
+            if (objInvestmentApllicationDTO.TermInvestments.FrequencyTypeID > 0)
+                objInvestmentApplicationDetails.FrequencyTypeID.FrequnecyID = objInvestmentApllicationDTO.TermInvestments.FrequencyTypeID;
+            else
+                objInvestmentApplicationDetails.FrequencyTypeID = null;
+            objInvestmentApplicationDetails.Interest = objInvestmentApllicationDTO.TermInvestments.ActualInterest;
+            objInvestmentApplicationDetails.InvestedAmount = objInvestmentApllicationDTO.TermInvestments.InvestedAmount;
+            objInvestmentApplicationDetails.InvestedDate = Convert.ToDateTime(objInvestmentApllicationDTO.TermInvestments.InvestedDate);//.Logindatetime;
+            //objInvestmentApplicationDetails.InvestmentTypeID = new InvestTypeMaster();
+            //objInvestmentApplicationDetails.InvestmentTypeID.InvestTypeID = objInvestmentApllicationDTO.TermInvestments.InvestmentID;
+            //objInvestmentApplicationDetails.InvestmentLocation = objInvestmentApllicationDTO.TermInvestments.InvestmentLocation;
+            objInvestmentApplicationDetails.Maturityamount = objInvestmentApllicationDTO.TermInvestments.ActualMaturityAmount;
+            objInvestmentApplicationDetails.MaturityDate = objInvestmentApllicationDTO.TermInvestments.MaturityDate;
+            objInvestmentApplicationDetails.PacsIDPkey = usercredentials.PacsId;
+            objInvestmentApplicationDetails.PeriodInDays = objInvestmentApllicationDTO.TermInvestments.PeriodInDays;
+            objInvestmentApplicationDetails.PeriodInMonths = objInvestmentApllicationDTO.TermInvestments.PeriodInMonths;
+            //objInvestmentApplicationDetails.ReferenceAccountNo = objInvestmentApllicationDTO.TermInvestments.ReferenceAccountNo;
+            objInvestmentApplicationDetails.ROI = objInvestmentApllicationDTO.TermInvestments.ROI;
+            objInvestmentApplicationDetails.AccountClosingDate = null;
+            objInvestmentApplicationDetails.TranscationDate = usercredentials.Logindatetime;
+            objInvestmentApplicationDetails.ClosureForeClosureInterest = 0.00m;
+            objInvestmentApplicationDetails.RenewalAccNo = null;
+            //objInvestmentApplicationDetails.VoucherNumber = 0;
+            objInvestmentApplicationDetails.ShareCertificateNo = objInvestmentApllicationDTO.ShareInvestments.AllottedShareCertificateNo;
+            objInvestmentApplicationDetails.NoofSharesAllotted = objInvestmentApllicationDTO.ShareInvestments.NoofSharesAllotted;
+            objInvestmentApplicationDetails.ShareValue = objInvestmentApllicationDTO.ShareInvestments.ShareValue;
+            //if (objInvestmentApllicationDTO.ShareInvestments.NoofSharesAllotted>0)
+            //    objInvestmentApplicationDetails.Status = "A";
+            //else
+            //    objInvestmentApplicationDetails.Status = "P";
+            objInvestmentApplicationDetails.IDGeneratorForPacs = usercredentials.PacsId;
+            objInvestmentApplicationDetails.SerialNumberOfPacs = usercredentials.PACSSerialNumber;
+            log.DebugFormat("Leaving FillInvestmentAppDtlsModify");
+            return objInvestmentApplicationDetails;
+        }
+
+
+        public decimal getOBInterestAmount(string AccountNo, DateTime cutoffDt, long pacId, int branchId)
+        {
+            decimal ObIntAmount = 0;
+            IList<InvestmentInterestPosting> objInv = new List<InvestmentInterestPosting>();
+            try
+            {
+
+                objInv = session.QueryOver<InvestmentInterestPosting>().Where(i => i.InvestmentNo == AccountNo && i.PacId == pacId && i.BranchId == branchId && i.InterestingPostingDate <=cutoffDt).List<InvestmentInterestPosting>();
+                if (objInv.Count > 0)
+                {
+                    foreach (InvestmentInterestPosting main in objInv)
+                    {
+                        ObIntAmount = ObIntAmount+main.InterestAmount;
+                        break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ObIntAmount=0;
+            }
+            return ObIntAmount;
+        }
+        #endregion
+
+
+
+    }
+}
